@@ -11,6 +11,7 @@ host = os.environ.get("BDD_HOST")
 login = os.environ.get("BDD_LOGIN")
 passwd = os.environ.get("BDD_PASSWD")
 pdf_folder = "notes/"
+is_existing = 1
 msg_nom_pren = "Saisir : NOM et Prénom  Enseignant"
 msg_type_epr = "Sélectionner : type d'épreuve"
 msg_type_note = "Sélectionnez  : type de note"
@@ -77,14 +78,15 @@ for filename in os.listdir(pdf_folder):
     dict_etu_note = list(zip(num_etu, note_etu))
     # note_etu = [x[1] for x in dict_etu_note if x[0] == "21901316"][0]
     sql = "SELECT name_devoir,COUNT(*) as count FROM note GROUP BY name_devoir ORDER BY count DESC"
-    a = mycursor.execute(sql)
-    print(a)
-    """for key, value in dict_etu_note:
-        id_etu = int(key)
-        note_etu = float(value.replace(",", ".")) if value != " " else 0
-        sql = "INSERT INTO note (id_etu, note_etu, name_devoir, name_ens, note_date, type_note, type_epreuve, link_pdf) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
-        val = (id_etu, note_etu, name_devoir, name_ens, note_date, type_note, type_epreuve, link_pdf)
-        mycursor.execute(sql, val)"""
+    is_existing = mycursor.execute(sql)
+    print(is_existing)
+    if int(is_existing) == 0:
+        for key, value in dict_etu_note:
+            id_etu = int(key)
+            note_etu = float(value.replace(",", ".")) if value != " " else 0
+            sql = "INSERT INTO note (id_etu, note_etu, name_devoir, name_ens, note_date, type_note, type_epreuve, link_pdf) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+            val = (id_etu, note_etu, name_devoir, name_ens, note_date, type_note, type_epreuve, link_pdf)
+            mycursor.execute(sql, val)
 
 mydb.commit()
 
