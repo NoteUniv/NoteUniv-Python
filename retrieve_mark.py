@@ -6,6 +6,8 @@ import os, requests, zipfile, io, dotenv, statistics, mysql.connector
 
 dotenv.load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
+debug = False
+
 token = os.environ.get("TOKEN_SEAFILE")
 host = os.environ.get("BDD_HOST")
 login = os.environ.get("BDD_LOGIN")
@@ -17,12 +19,15 @@ msg_type_epr = "Sélectionner : type d'épreuve"
 msg_type_note = "Sélectionnez  : type de note"
 msg_nom_module = "Saisir : Nom du Module et Nom du Devoir"
 
-"""
+
 r = requests.get("https://seafile.unistra.fr/api/v2.1/share-link-zip-task/?share_link_token=" + token + "&path=%2F&_=1570695690269")
 if r.ok:
     token = r.json()["zip_token"]
-r = requests.get("https://seafile.unistra.fr/seafhttp/zip/" + token)
-a = open("notes.zip", "wb").write(r.content)
+
+r = requests.get("https://seafile.unistra.fr/seafhttp/zip/" + token, stream=True)
+with open("notes.zip", "wb") as file:
+    for chunk in r:
+        file.write(chunk)
 
 with zipfile.ZipFile("notes.zip", "r") as zip_ref:
     for zipfile in zip_ref.infolist():
@@ -30,7 +35,6 @@ with zipfile.ZipFile("notes.zip", "r") as zip_ref:
             continue
         zipfile.filename = os.path.basename(zipfile.filename)
         zip_ref.extract(zipfile, pdf_folder)
-"""
 
 def convert_pdf_to_txt(path):
     output = io.StringIO()
@@ -47,8 +51,14 @@ def convert_pdf_to_txt(path):
     output.close()
     return text.split("\n")
 
-mydb = mysql.connector.connect(user=login, password=passwd, host=host, database="test")
-mycursor = mydb.cursor()
+if not debug:
+    mydb = mysql.connector.connect(user=login, password=passwd, host=host, database="note_univ")
+    cursor = mydb.cursor()
+    sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = 'note_univ') AND (TABLE_NAME = 'global')"
+    cursor.execute(sql)
+    if list(cursor.fetchall()[0])[0] == 0:
+        sql = "CREATE TABLE IF NOT EXISTS `global` (`id` int(255) NOT NULL,`type_note` varchar(255) NOT NULL,`type_epreuve` varchar(255) NOT NULL,`name_devoir` varchar(255) NOT NULL,`name_ens` varchar(255) NOT NULL,`link_pdf` varchar(255) NOT NULL,`note_date` varchar(255) NOT NULL,`notes_total` int(255) NOT NULL,`moy` double NOT NULL,`median` double NOT NULL,`mini` double NOT NULL,`maxi` double NOT NULL,`variance` double NOT NULL,`deviation` double NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1;"
+        cursor.execute(sql)
 
 for filename in os.listdir(pdf_folder):
     list_el = [x for x in convert_pdf_to_txt(pdf_folder + filename) if x != ""]
@@ -60,6 +70,7 @@ for filename in os.listdir(pdf_folder):
     link_pdf = "https://seafile.unistra.fr/d/" + token + "/files/?p=/" + filename + "&dl=1"
     y, m, d, _ = filename.split("_", 3)
     note_date = f"{d}/{m}/{y}"
+    print(type_note, type_epreuve, name_devoir, name_ens, link_pdf, note_date)
 
     etu_start_index = list_el.index("N° Etudiant")
     nb_etu = int(list_el[etu_start_index - 1])
@@ -67,27 +78,33 @@ for filename in os.listdir(pdf_folder):
     note_start_index = list_el.index("Note")
     note_etu = list_el[note_start_index + 1:note_start_index + nb_etu + 1]
 
-    notes_total = len([x for x in note_etu if x != " " and x != "ABI"])
-    moy = statistics.mean([float(x.replace(",", ".")) for x in note_etu if x != " " and x != "ABI"])
-    median = statistics.median([float(x.replace(",", ".")) for x in note_etu if x != " " and x != "ABI"])
-    mini = min([float(x.replace(",", ".")) for x in note_etu if x != " " and x != "ABI"])
-    maxi = max([float(x.replace(",", ".")) for x in note_etu if x != " " and x != "ABI"])
-    variance = statistics.variance([float(x.replace(",", ".")) for x in note_etu if x != " " and x != "ABI"])
-    deviation = statistics.stdev([float(x.replace(",", ".")) for x in note_etu if x != " " and x != "ABI"])
-
+    notes_total = len([x for x in note_etu if x != " " and x.lower() != "abi" and x.lower() != "abs"])
+    moy = statistics.mean([float(x.replace(",", ".")) for x in note_etu if x != " " and x.lower() != "abi" and x.lower() != "abs"])
+    median = statistics.median([float(x.replace(",", ".")) for x in note_etu if x != " " and x.lower() != "abi" and x.lower() != "abs"])
+    mini = min([float(x.replace(",", ".")) for x in note_etu if x != " " and x.lower() != "abi" and x.lower() != "abs"])
+    maxi = max([float(x.replace(",", ".")) for x in note_etu if x != " " and x.lower() != "abi" and x.lower() != "abs"])
+    variance = statistics.variance([float(x.replace(",", ".")) for x in note_etu if x != " " and x.lower() != "abi" and x.lower() != "abs"])
+    deviation = statistics.stdev([float(x.replace(",", ".")) for x in note_etu if x != " " and x.lower() != "abi" and x.lower() != "abs"])
+    print(notes_total, moy, median, mini, maxi, variance, deviation)
+"""
     dict_etu_note = list(zip(num_etu, note_etu))
-    # note_etu = [x[1] for x in dict_etu_note if x[0] == "21901316"][0]
-    sql = "SELECT name_devoir,COUNT(*) as count FROM note GROUP BY name_devoir ORDER BY count DESC"
-    is_existing = mycursor.execute(sql)
-    print(is_existing)
-    if int(is_existing) == 0:
-        for key, value in dict_etu_note:
-            id_etu = int(key)
-            note_etu = float(value.replace(",", ".")) if value != " " else 0
-            sql = "INSERT INTO note (id_etu, note_etu, name_devoir, name_ens, note_date, type_note, type_epreuve, link_pdf) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
-            val = (id_etu, note_etu, name_devoir, name_ens, note_date, type_note, type_epreuve, link_pdf)
-            mycursor.execute(sql, val)
+    if debug:
+        note_etu = [x[1] for x in dict_etu_note if x[0] == "21901316"][0]
+        print(note_etu)
+        continue
+    else:
+        sql = "SELECT name_devoir, COUNT(*) as count FROM note GROUP BY name_devoir ORDER BY count DESC"
+        is_existing = cursor.execute(sql)
+        print(is_existing)
+        if int(is_existing) == 0:
+            for key, value in dict_etu_note:
+                id_etu = int(key)
+                note_etu = float(value.replace(",", ".")) if value != " " else 0
+                sql = "INSERT INTO note (id_etu, note_etu) VALUES (%s, %s)"
+                val = (id_etu, note_etu)
+                cursor.execute(sql, val)
+"""
 
-mydb.commit()
-
-mydb.close()
+if not debug:
+    mydb.commit()
+    mydb.close()
