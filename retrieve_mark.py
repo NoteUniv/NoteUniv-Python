@@ -53,13 +53,13 @@ def convert_pdf_to_txt(path):
 if not debug:
     mydb_create = mysql.connector.connect(host=host, user=login, passwd=passwd)
     cursor_create = mydb_create.cursor()
-    cursor_create.execute("CREATE DATABASE IF NOT EXISTS `note_univ`")
+    cursor_create.execute("CREATE DATABASE IF NOT EXISTS `c1287446_main`")
     
-    mydb = mysql.connector.connect(user=login, password=passwd, host=host, database="note_univ")
+    mydb = mysql.connector.connect(user=login, password=passwd, host=host, database="c1287446_main")
     cursor = mydb.cursor()
-    sql = "CREATE DATABASE IF NOT EXISTS `note_univ`"
+    sql = "CREATE DATABASE IF NOT EXISTS `c1287446_main`"
     cursor.execute(sql)
-    sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = 'note_univ') AND (TABLE_NAME = 'global')"
+    sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = 'c1287446_main') AND (TABLE_NAME = 'global')"
     cursor.execute(sql)
     if list(cursor.fetchall()[0])[0] == 0:
         sql = "CREATE TABLE IF NOT EXISTS `global` (`id` int(255) NOT NULL KEY AUTO_INCREMENT,`type_note` varchar(255) NOT NULL,`type_epreuve` varchar(255) NOT NULL,`name_devoir` varchar(255) NOT NULL,`name_ens` varchar(255) NOT NULL,`name_pdf` varchar(255) NOT NULL,`link_pdf` varchar(255) NOT NULL,`note_date` varchar(255) NOT NULL,`notes_total` int(255) NOT NULL,`moy` double NOT NULL,`median` double NOT NULL,`mini` double NOT NULL,`maxi` double NOT NULL,`variance` double NOT NULL,`deviation` double NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -122,3 +122,5 @@ for filename in os.listdir(pdf_folder):
 if not debug:
     mydb.commit()
     mydb.close()
+
+os.remove("notes.zip")
