@@ -106,3 +106,4 @@ venv.bak/
 *.png
 *.zip
 notes/
++extra/
