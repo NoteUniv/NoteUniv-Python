@@ -22,6 +22,25 @@ msg_nom_module = "Saisir : Nom du Module et Nom du Devoir"
 with open("subjects_coeff.json", "r", encoding="utf-8") as file:
     subjects = json.load(file)
 
+def main():
+    global token
+    r = requests.get("https://seafile.unistra.fr/api/v2.1/share-link-zip-task/?share_link_token=" + token + "&path=%2F&_=1570695690269")
+    if r.ok:
+        token = r.json()["zip_token"]
+
+    r = requests.get("https://seafile.unistra.fr/seafhttp/zip/" + token, stream=True)
+    with open("notes.zip", "wb") as file:
+        for chunk in r:
+            file.write(chunk)
+
+    with ZipFile("notes.zip", "r") as zip_ref:
+        for zipfile in zip_ref.infolist():
+            if zipfile.filename[-1] == '/':
+                continue
+            zipfile.filename = os.path.basename(zipfile.filename)
+            zip_ref.extract(zipfile, pdf_folder)
+    os.remove("notes.zip")
+
 def convert_pdf_to_list(path):
     output = io.StringIO()
     manager = PDFResourceManager()
@@ -50,13 +69,13 @@ def process_pdfs():
         sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = 'c1287446_main') AND (TABLE_NAME = 'global')"
         cursor.execute(sql)
         if list(cursor.fetchall()[0])[0] == 0:
-            sql = "CREATE TABLE IF NOT EXISTS `global` (`id` int(255) NOT NULL KEY AUTO_INCREMENT,`type_note` varchar(255) NOT NULL,`type_epreuve` varchar(255) NOT NULL,`name_devoir` varchar(255) NOT NULL,`name_ens` varchar(255) NOT NULL,`name_pdf` varchar(255) NOT NULL,`link_pdf` varchar(255) NOT NULL,`note_date` varchar(255) NOT NULL,`note_total` int(255) NOT NULL,`moy` double NOT NULL,`median` double NOT NULL,`mini` double NOT NULL,`maxi` double NOT NULL,`variance` double NOT NULL,`deviation` double NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+            sql = "CREATE TABLE IF NOT EXISTS `global` (`id` int(255) NOT NULL KEY AUTO_INCREMENT,`type_note` varchar(255) NOT NULL,`type_epreuve` varchar(255) NOT NULL,`name_devoir` varchar(255) NOT NULL,`name_ens` varchar(255) NOT NULL,`name_pdf` varchar(255) NOT NULL,`link_pdf` varchar(255) NOT NULL,`note_code` varchar(255) NOT NULL,`note_coeff` int(8) NOT NULL,`note_semestre` varchar(255) NOT NULL,`note_date` date NOT NULL,`note_total` int(255) NOT NULL,`moy` double NOT NULL,`median` double NOT NULL,`mini` double NOT NULL,`maxi` double NOT NULL,`variance` double NOT NULL,`deviation` double NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=latin1;"
             cursor.execute(sql)
-            records = []
+            records_global = []
         else:
             sql = "SELECT `name_pdf` FROM global"
             cursor.execute(sql)
-            records = [x[0] for x in cursor.fetchall()]
+            records_global = [x[0] for x in cursor.fetchall()]
 
     for filename in os.listdir(pdf_folder):
         list_el = [x for x in convert_pdf_to_list(pdf_folder + filename) if x != ""]
@@ -68,7 +87,7 @@ def process_pdfs():
         link_pdf = "https://seafile.unistra.fr/d/" + token + "/files/?p=/" + filename + "&dl=1"
         name_pdf = link_pdf.split("/")[-1].split(".pdf")[0]
         y, m, d, _ = filename.split("_", 3)
-        note_date = f"{d}/{m}/{y}"
+        note_date = f"{y}-{m}-{d}"
 
         for main_key in subjects["MMI1"].keys():
             for x in subjects["MMI1"][main_key].keys():
@@ -97,47 +116,35 @@ def process_pdfs():
         dict_etu_note = list(zip(num_etu, note_etu))
         if debug:
             note_etu = [x[1] for x in dict_etu_note if x[0] == "21901316"][0]
-            print(note_etu)
+            print(note_etu + "----------\n")
             print(type_note, type_epreuve, name_devoir, name_ens, name_pdf, link_pdf, note_code, note_coeff, note_semestre, note_date, note_total, moy, median, mini, maxi, variance, deviation)
             continue
-        if name_pdf in records:
-            print("'" + name_devoir + "' already exists.")
+
+        if name_pdf in records_global:
+            print("'" + name_devoir + "' already in global.")
         else:
-            print("Adding new mark '" + name_devoir + "'.")
-            sql = "INSERT INTO global (type_note, type_epreuve, name_devoir, name_ens, name_pdf, link_pdf, note_code, note_coeff, note_semestre, note_date, note_total, moy, median, mini, maxi, variance, deviation) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            print("Adding new line '" + name_devoir + "' in global.")
+            sql = "INSERT INTO global (type_note, type_epreuve, name_devoir, name_ens, name_pdf, link_pdf, note_code, note_coeff, note_semestre, note_date, note_total, moy, median, mini, maxi, variance, deviation) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
             val = (type_note, type_epreuve, name_devoir, name_ens, name_pdf, link_pdf, note_code, note_coeff, note_semestre, note_date, note_total, moy, median, mini, maxi, variance, deviation)
             cursor.execute(sql, val)
 
-            cursor.execute("CREATE TABLE IF NOT EXISTS `" + name_pdf + "` (`id_etu` int(11) NOT NULL,`note_etu` float NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=latin1;")
+        sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = 'c1287446_main') AND (TABLE_NAME = '" + name_pdf + "')"
+        cursor.execute(sql)
+        if list(cursor.fetchall()[0])[0] == 0:
+            print("Adding table '" + name_devoir + "'.")
+            cursor.execute("CREATE TABLE IF NOT EXISTS `" + name_pdf + "` (`id_etu` int(8) NOT NULL,`note_etu` float NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=latin1;")
             for key, value in dict_etu_note:
                 id_etu = int(key)
                 note_etu = float(value.replace(",", ".")) if "," in value else 0
                 sql = "INSERT INTO " + name_pdf + " (id_etu, note_etu) VALUES (%s, %s)"
                 val = (id_etu, note_etu)
                 cursor.execute(sql, val)
+        else:
+            print("'" + name_devoir + "' already exists.")
 
     if not debug:
         mydb.commit()
         mydb.close()
-
-def main():
-    global token
-    r = requests.get("https://seafile.unistra.fr/api/v2.1/share-link-zip-task/?share_link_token=" + token + "&path=%2F&_=1570695690269")
-    if r.ok:
-        token = r.json()["zip_token"]
-
-    r = requests.get("https://seafile.unistra.fr/seafhttp/zip/" + token, stream=True)
-    with open("notes.zip", "wb") as file:
-        for chunk in r:
-            file.write(chunk)
-
-    with ZipFile("notes.zip", "r") as zip_ref:
-        for zipfile in zip_ref.infolist():
-            if zipfile.filename[-1] == '/':
-                continue
-            zipfile.filename = os.path.basename(zipfile.filename)
-            zip_ref.extract(zipfile, pdf_folder)
-    os.remove("notes.zip")
 
 if __name__ == "__main__":
     main()
