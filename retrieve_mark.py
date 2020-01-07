@@ -14,6 +14,9 @@ token = os.environ.get("TOKEN_SEAFILE")
 host = os.environ.get("BDD_HOST")
 login = os.environ.get("BDD_LOGIN")
 passwd = os.environ.get("BDD_PASSWD")
+bdd_name = "c1287446_main"
+global_table = "global"
+ranking_table = "ranking"
 
 # Constants for PDFs
 pdf_folder = "notes/"
@@ -41,12 +44,17 @@ def main():
             file.write(chunk)
 
     # Open all zip files and extract them
-    with ZipFile("notes.zip", "r") as zip_ref:
-        for zipfile in zip_ref.infolist():
-            if zipfile.filename[-1] == '/':
-                continue
-            zipfile.filename = os.path.basename(zipfile.filename)
-            zip_ref.extract(zipfile, pdf_folder)
+    try:
+        with ZipFile("notes.zip", "r") as zip_ref:
+            for zipfile in zip_ref.infolist():
+                if zipfile.filename[-1] == '/':
+                    continue
+                zipfile.filename = os.path.basename(zipfile.filename)
+                zip_ref.extract(zipfile, pdf_folder)
+    except Exception as e:
+        if "BadZipFile" in str(type(e)):
+            # Do main again if file is unreadable
+            main()
     os.remove("notes.zip")
 
 def convert_pdf_to_list(path):
@@ -65,32 +73,54 @@ def convert_pdf_to_list(path):
     output.close()
     return text.split("\n")
 
-def process_pdfs():
-    if not debug:
-        # Create main database if not exists
-        db_noteuniv = mysql.connector.connect(host=host, user=login, passwd=passwd)
-        noteuniv_cursor = db_noteuniv.cursor()
-        noteuniv_cursor.execute("CREATE DATABASE IF NOT EXISTS `c1287446_main`")
-        db_noteuniv.commit()
-        db_noteuniv.close()
+def handle_db():
+    global db_noteuniv, noteuniv_cursor, records_global
+    # Create main database if not exists
+    db_noteuniv1 = mysql.connector.connect(host=host, user=login, passwd=passwd)
+    noteuniv_cursor1 = db_noteuniv1.cursor()
+    noteuniv_cursor1.execute("CREATE DATABASE IF NOT EXISTS `" + bdd_name + "`")
+    db_noteuniv1.commit()
+    db_noteuniv1.close()
 
-        # Login to this database directly
-        db_noteuniv = mysql.connector.connect(user=login, password=passwd, host=host, database="c1287446_main")
-        noteuniv_cursor = db_noteuniv.cursor()
-        # Check if global table exists
-        sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = `c1287446_main`) AND (TABLE_NAME = `global`)"
+    # Login to this database directly
+    db_noteuniv = mysql.connector.connect(user=login, password=passwd, host=host, database=bdd_name)
+    noteuniv_cursor = db_noteuniv.cursor()
+    # Check if global table exists
+    sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "') AND (TABLE_NAME = '" + global_table + "')"
+    noteuniv_cursor.execute(sql)
+    if list(noteuniv_cursor.fetchall()[0])[0] == 0:
+        # Create table shema
+        sql = "CREATE TABLE IF NOT EXISTS `" + global_table + "` (`id` int(255) NOT NULL KEY AUTO_INCREMENT,`type_note` varchar(255) NOT NULL,`type_epreuve` varchar(255) NOT NULL,`name_devoir` varchar(255) NOT NULL,`name_ens` varchar(255) NOT NULL,`name_pdf` varchar(255) NOT NULL,`link_pdf` varchar(255) NOT NULL,`note_code` varchar(255) NOT NULL,`note_coeff` int(8) NOT NULL,`note_semester` varchar(255) NOT NULL,`note_date` date NOT NULL,`note_total` int(255) NOT NULL,`moy` double NOT NULL,`median` double NOT NULL,`mini` double NOT NULL,`maxi` double NOT NULL,`variance` double NOT NULL,`deviation` double NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=latin1;"
         noteuniv_cursor.execute(sql)
-        if list(noteuniv_cursor.fetchall()[0])[0] == 0:
-            # Create table shema
-            sql = "CREATE TABLE IF NOT EXISTS `global` (`id` int(255) NOT NULL KEY AUTO_INCREMENT,`type_note` varchar(255) NOT NULL,`type_epreuve` varchar(255) NOT NULL,`name_devoir` varchar(255) NOT NULL,`name_ens` varchar(255) NOT NULL,`name_pdf` varchar(255) NOT NULL,`link_pdf` varchar(255) NOT NULL,`note_code` varchar(255) NOT NULL,`note_coeff` int(8) NOT NULL,`note_semester` varchar(255) NOT NULL,`note_date` date NOT NULL,`note_total` int(255) NOT NULL,`moy` double NOT NULL,`median` double NOT NULL,`mini` double NOT NULL,`maxi` double NOT NULL,`variance` double NOT NULL,`deviation` double NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=latin1;"
-            noteuniv_cursor.execute(sql)
-            records_global = []
-        else:
-            # Select all data from global table
-            sql = "SELECT `name_pdf` FROM `global`"
-            noteuniv_cursor.execute(sql)
-            records_global = [x[0] for x in noteuniv_cursor.fetchall()]
+        records_global = []
+        rows_complete = False
+        tables_complete = False
+    else:
+        # Select all data from global table
+        sql = "SELECT `name_pdf` FROM `" + global_table + "`"
+        noteuniv_cursor.execute(sql)
+        records_global = [x[0] for x in noteuniv_cursor.fetchall()]
 
+        # Check if rows in global == pdf count
+        if len(records_global) == len(os.listdir(pdf_folder)):
+            rows_complete = True
+        else:
+            rows_complete = False
+
+        sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "')"
+        noteuniv_cursor.execute(sql)
+        # Check if total tables except global and ranking == pdf count
+        if list(noteuniv_cursor.fetchall()[0])[0] - 2 == len(os.listdir(pdf_folder)):
+            tables_complete = True
+        else:
+            tables_complete = False
+
+        # Exit if nothing to update (avoid useless requests)
+        if rows_complete and tables_complete:
+            exit("Nothing more to add, tables and global are not updated.")
+
+def process_pdfs():
+    global db_noteuniv, noteuniv_cursor
     # Loop PDF files
     for filename in os.listdir(pdf_folder):
         # Clean list of data by removing blank
@@ -149,12 +179,12 @@ def process_pdfs():
             print("'" + name_devoir + "' already in global.")
         else:
             print("Adding new line '" + name_devoir + "' in global.")
-            sql = "INSERT INTO global (type_note, type_epreuve, name_devoir, name_ens, name_pdf, link_pdf, note_code, note_coeff, note_semester, note_date, note_total, moy, median, mini, maxi, variance, deviation) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            sql = "INSERT INTO '" + global_table + "' (type_note, type_epreuve, name_devoir, name_ens, name_pdf, link_pdf, note_code, note_coeff, note_semester, note_date, note_total, moy, median, mini, maxi, variance, deviation) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
             val = (type_note, type_epreuve, name_devoir, name_ens, name_pdf, link_pdf, note_code, note_coeff, note_semester, note_date, note_total, moy, median, mini, maxi, variance, deviation)
             noteuniv_cursor.execute(sql, val)
 
         # Test if table exists
-        sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = `c1287446_main`) AND (TABLE_NAME = `" + name_pdf + "`)"
+        sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "') AND (TABLE_NAME = '" + name_pdf + "')"
         noteuniv_cursor.execute(sql)
         if list(noteuniv_cursor.fetchall()[0])[0] == 0:
             print("Adding table '" + name_devoir + "'.")
@@ -168,12 +198,52 @@ def process_pdfs():
         else:
             print("'" + name_devoir + "' already exists.")
 
+def update_ranking():
+    # Check if global table exists
+    sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "') AND (TABLE_NAME = '" + ranking_table + "')"
+    noteuniv_cursor.execute(sql)
+    if list(noteuniv_cursor.fetchall()[0])[0] == 0:
+        # Create table shema
+        sql = "CREATE TABLE IF NOT EXISTS `" + ranking_table + "` (`id_etu` int(8) NOT NULL,`moy_etu` float NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+        noteuniv_cursor.execute(sql)
+    else:
+        # Clear all table
+        sql = "TRUNCATE TABLE `" + ranking_table + "`"
+        noteuniv_cursor.execute(sql)
+
+    sql = "SELECT `id_etu` FROM `2019_10_02_DIEBOLD_LOUX_TPtest_REZS1_Note_unique`"
+    noteuniv_cursor.execute(sql)
+    for id_etu in noteuniv_cursor.fetchall():
+        sql = "SELECT `name_pdf`, `mini`, `note_coeff` FROM `" + global_table + "`"
+        noteuniv_cursor.execute(sql)
+        all_notes = []
+        all_coeff = []
+        for note_data in noteuniv_cursor.fetchall():
+            sql = "SELECT `note_etu` FROM " + str(note_data[0]) + " WHERE id_etu = '" + str(id_etu[0]) + "'"
+            noteuniv_cursor.execute(sql)
+            note_etu_mark = noteuniv_cursor.fetchall()
+            if list(note_etu_mark[0])[0] > note_data[1]:
+                note_etu_mark_coeff = note_data[2]
+                note_etu_mark_final = note_etu_mark[0] * note_etu_mark_coeff
+                all_notes.append(note_etu_mark_final)
+                all_coeff.append(note_etu_mark_coeff)
+
+        moy_etu = sum([sum(x) for x in all_notes]) / sum(all_coeff)
+        sql = "INSERT INTO `" + ranking_table + "` (id_etu, moy_etu) VALUES ( % s, % s)"
+        val = (id_etu[0], round(moy_etu, 2))
+        noteuniv_cursor.execute(sql, val)
+
+if __name__ == "__main__":
+    # Start main function and then process PDFs + DB push
     if not debug:
+        main()
+        handle_db()
+        process_pdfs()
+        if not tables_complete:
+            update_ranking()
         # Commit changes (push)
         db_noteuniv.commit()
         db_noteuniv.close()
-
-if __name__ == "__main__":
-    # Start main function and then process PDFs
-    main()
-    process_pdfs()
+    else:
+        main()
+        process_pdfs()
