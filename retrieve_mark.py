@@ -74,7 +74,7 @@ def convert_pdf_to_list(path):
     return text.split("\n")
 
 def handle_db():
-    global db_noteuniv, noteuniv_cursor, records_global
+    global db_noteuniv, noteuniv_cursor, records_global, rows_complete, tables_complete
     # Create main database if not exists
     db_noteuniv1 = mysql.connector.connect(host=host, user=login, passwd=passwd)
     noteuniv_cursor1 = db_noteuniv1.cursor()
@@ -124,7 +124,7 @@ def process_pdfs():
     # Loop PDF files
     for filename in os.listdir(pdf_folder):
         # Clean list of data by removing blank
-        list_el = [x for x in convert_pdf_to_list(pdf_folder + filename) if x != ""]
+        list_el = convert_pdf_to_list(pdf_folder + filename)
 
         # Get main infos with text indexes
         type_note = list_el[list_el.index(msg_type_note) + 1]
@@ -181,7 +181,7 @@ def process_pdfs():
             print("'" + name_devoir + "' already in global.")
         else:
             print("Adding new line '" + name_devoir + "' in global.")
-            sql = "INSERT INTO '" + global_table + "' (type_note, type_epreuve, name_devoir, name_ens, name_pdf, link_pdf, note_code, note_coeff, note_semester, note_date, note_total, moy, median, mini, maxi, variance, deviation) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            sql = "INSERT INTO " + global_table + " (type_note, type_epreuve, name_devoir, name_ens, name_pdf, link_pdf, note_code, note_coeff, note_semester, note_date, note_total, moy, median, mini, maxi, variance, deviation) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
             val = (type_note, type_epreuve, name_devoir, name_ens, name_pdf, link_pdf, note_code, note_coeff, note_semester, note_date, note_total, moy, median, mini, maxi, variance, deviation)
             noteuniv_cursor.execute(sql, val)
 
@@ -227,7 +227,7 @@ def update_ranking():
             noteuniv_cursor.execute(sql)
             note_etu_mark = noteuniv_cursor.fetchall()
             # Insert notes and coeffs to lists
-            if list(note_etu_mark[0])[0] > note_data[1] and note_data[2] == "Note unique":
+            if note_data[1] < list(note_etu_mark[0])[0] and note_data[3] == "Note unique":
                 note_etu_mark_coeff = note_data[2]
                 note_etu_mark_final = note_etu_mark[0] * note_etu_mark_coeff
                 all_notes.append(note_etu_mark_final)
@@ -236,7 +236,7 @@ def update_ranking():
         # Weighted average on all marks for etu
         moy_etu = sum([sum(x) for x in all_notes]) / sum(all_coeff)
         # Insert average for each etu
-        sql = "INSERT INTO `" + ranking_table + "` (id_etu, moy_etu) VALUES ( % s, % s)"
+        sql = "INSERT INTO `" + ranking_table + "` (id_etu, moy_etu) VALUES (%s, %s)"
         val = (id_etu[0], round(moy_etu, 2))
         noteuniv_cursor.execute(sql, val)
 
