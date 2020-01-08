@@ -211,24 +211,29 @@ def update_ranking():
         sql = "TRUNCATE TABLE `" + ranking_table + "`"
         noteuniv_cursor.execute(sql)
 
+    # Get all id_etu from any PDF file
     sql = "SELECT `id_etu` FROM `2019_10_02_DIEBOLD_LOUX_TPtest_REZS1_Note_unique`"
     noteuniv_cursor.execute(sql)
     for id_etu in noteuniv_cursor.fetchall():
-        sql = "SELECT `name_pdf`, `mini`, `note_coeff` FROM `" + global_table + "`"
+        sql = "SELECT `name_pdf`, `mini`, `note_coeff`, `type_note` FROM `" + global_table + "`"
         noteuniv_cursor.execute(sql)
         all_notes = []
         all_coeff = []
+        # Get all etu notes from all PDFs
         for note_data in noteuniv_cursor.fetchall():
             sql = "SELECT `note_etu` FROM " + str(note_data[0]) + " WHERE id_etu = '" + str(id_etu[0]) + "'"
             noteuniv_cursor.execute(sql)
             note_etu_mark = noteuniv_cursor.fetchall()
-            if list(note_etu_mark[0])[0] > note_data[1]:
+            # Insert notes and coeffs to lists
+            if list(note_etu_mark[0])[0] > note_data[1] and note_data[2] == "Note unique":
                 note_etu_mark_coeff = note_data[2]
                 note_etu_mark_final = note_etu_mark[0] * note_etu_mark_coeff
                 all_notes.append(note_etu_mark_final)
                 all_coeff.append(note_etu_mark_coeff)
 
+        # Weighted average on all marks for etu
         moy_etu = sum([sum(x) for x in all_notes]) / sum(all_coeff)
+        # Insert average for each etu
         sql = "INSERT INTO `" + ranking_table + "` (id_etu, moy_etu) VALUES ( % s, % s)"
         val = (id_etu[0], round(moy_etu, 2))
         noteuniv_cursor.execute(sql, val)
