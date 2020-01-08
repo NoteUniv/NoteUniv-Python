@@ -150,10 +150,12 @@ def process_pdfs():
 
         # Get list of etu ids and marks
         etu_start_index = list_el.index("N° Etudiant")
-        nb_etu = int(list_el[etu_start_index - 1])
+        nb_etu = int(list_el[etu_start_index - 2])
         num_etu = list_el[etu_start_index + 1:etu_start_index + nb_etu + 1]
         note_start_index = list_el.index("Note")
         note_etu = list_el[note_start_index + 1:note_start_index + nb_etu + 1]
+        # If teacher don't write ABS or ABI, add it to have all marks
+        note_etu = [x if not x == "" else "ABS" for x in note_etu]
 
         # Calculate many stats from marks
         clear_note_etu = [float(x.replace(",", ".")) for x in note_etu if x != " " and x.lower() != "abi" and x.lower() != "abs"]
