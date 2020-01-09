@@ -30,14 +30,13 @@ with open("subjects_coeff.json", "r", encoding="utf-8") as file:
     subjects = json.load(file)
 
 def main():
-    global token
     # Get download token with classic token
     r = requests.get("https://seafile.unistra.fr/api/v2.1/share-link-zip-task/?share_link_token=" + token + "&path=%2F&_=1570695690269")
     if r.ok:
-        token = r.json()["zip_token"]
+        token_pdf = r.json()["zip_token"]
 
-    # Get marks using download token
-    r = requests.get("https://seafile.unistra.fr/seafhttp/zip/" + token, stream=True)
+    # Get marks using download token_pdf
+    r = requests.get("https://seafile.unistra.fr/seafhttp/zip/" + token_pdf, stream=True)
     # Download as stream (works better)
     with open("notes.zip", "wb") as file:
         for chunk in r:
@@ -54,7 +53,8 @@ def main():
     except Exception as e:
         if "BadZipFile" in str(type(e)):
             # Do main again if file is unreadable
-            main()
+            os.remove("notes.zip")
+            return main()
     os.remove("notes.zip")
 
 def convert_pdf_to_list(path):
@@ -90,7 +90,7 @@ def handle_db():
     noteuniv_cursor.execute(sql)
     if list(noteuniv_cursor.fetchall()[0])[0] == 0:
         # Create table shema
-        sql = "CREATE TABLE IF NOT EXISTS `" + global_table + "` (`id` int(255) NOT NULL KEY AUTO_INCREMENT,`type_note` varchar(255) NOT NULL,`type_epreuve` varchar(255) NOT NULL,`name_devoir` varchar(255) NOT NULL,`name_ens` varchar(255) NOT NULL,`name_pdf` varchar(255) NOT NULL,`link_pdf` varchar(255) NOT NULL,`note_code` varchar(255) NOT NULL,`note_coeff` int(8) NOT NULL,`note_semester` varchar(255) NOT NULL,`note_date` date NOT NULL,`note_total` int(255) NOT NULL,`moy` double NOT NULL,`median` double NOT NULL,`mini` double NOT NULL,`maxi` double NOT NULL,`variance` double NOT NULL,`deviation` double NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+        sql = "CREATE TABLE IF NOT EXISTS `" + global_table + "` (`id` int(255) NOT NULL KEY AUTO_INCREMENT,`type_note` varchar(255) NOT NULL,`type_epreuve` varchar(255) NOT NULL,`name_devoir` varchar(255) NOT NULL,`name_ens` varchar(255) NOT NULL,`name_pdf` varchar(255) NOT NULL,`link_pdf` varchar(255) NOT NULL,`note_code` varchar(255) NOT NULL,`note_coeff` int(8) NOT NULL,`note_semester` varchar(255) NOT NULL,`note_date` date NOT NULL,`note_total` int(255) NOT NULL,`moy` double NOT NULL,`median` double NOT NULL,`mini` double NOT NULL,`maxi` double NOT NULL,`variance` double NOT NULL,`deviation` double NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
         noteuniv_cursor.execute(sql)
         records_global = []
         rows_complete = False
@@ -123,7 +123,7 @@ def process_pdfs():
     global db_noteuniv, noteuniv_cursor
     # Loop PDF files
     for filename in os.listdir(pdf_folder):
-        # Clean list of data by removing blank
+        # Get all data from PDF (list)
         list_el = convert_pdf_to_list(pdf_folder + filename)
 
         # Get main infos with text indexes
@@ -148,14 +148,29 @@ def process_pdfs():
                         note_semester = main_key
                         break
 
-        # Get list of etu ids and marks
-        etu_start_index = list_el.index("N° Etudiant")
-        nb_etu = int(list_el[etu_start_index - 2])
+        # Check format of PDF, blank is useless if space in doc
+        if " " in list_el:
+            list_el = [x for x in list_el if x != ""]
+            etu_start_index = list_el.index("N° Etudiant")
+            note_start_index = list_el.index("Note")
+            nb_etu = int(list_el[etu_start_index - 1])
+        else:
+            # Blank is useless if PDF contains
+            if any([x.lower() in ["abi", "abs"] for x in list_el]):
+                list_el = [x for x in list_el if x != ""]
+                etu_start_index = list_el.index("N° Etudiant")
+                note_start_index = list_el.index("Note")
+                nb_etu = int(list_el[etu_start_index - 1])
+            # Blank mean ABS if not abs or abi is not mentionned
+            else:
+                list_el = [x if x != "" else "ABS" for x in list_el]
+                etu_start_index = list_el.index("N° Etudiant")
+                note_start_index = list_el.index("Note")
+                nb_etu = int(list_el[etu_start_index - 2])
+
+        # Get lists of all num etu and all marks
         num_etu = list_el[etu_start_index + 1:etu_start_index + nb_etu + 1]
-        note_start_index = list_el.index("Note")
         note_etu = list_el[note_start_index + 1:note_start_index + nb_etu + 1]
-        # If teacher don't write ABS or ABI, add it to have all marks
-        note_etu = [x if not x == "" else "ABS" for x in note_etu]
 
         # Calculate many stats from marks
         clear_note_etu = [float(x.replace(",", ".")) for x in note_etu if x != " " and x.lower() != "abi" and x.lower() != "abs"]
@@ -166,6 +181,9 @@ def process_pdfs():
         maxi = max(clear_note_etu)
         variance = statistics.variance(clear_note_etu)
         deviation = statistics.stdev(clear_note_etu)
+
+        # All ABS are set to 100 (handled by website)
+        note_etu = [float(x.replace(",", ".")) if x != " " and x.lower() != "abi" and x.lower() != "abs" else "100" for x in note_etu]
 
         # Gen a dict with ids and marks merged
         dict_etu_note = list(zip(num_etu, note_etu))
@@ -190,10 +208,8 @@ def process_pdfs():
         noteuniv_cursor.execute(sql)
         if list(noteuniv_cursor.fetchall()[0])[0] == 0:
             print("Adding table '" + name_devoir + "'.")
-            noteuniv_cursor.execute("CREATE TABLE IF NOT EXISTS `" + name_pdf + "` (`id_etu` int(8) NOT NULL,`note_etu` float NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=latin1;")
-            for key, value in dict_etu_note:
-                id_etu = int(key)
-                note_etu = float(value.replace(",", ".")) if "," in value else 0
+            noteuniv_cursor.execute("CREATE TABLE IF NOT EXISTS `" + name_pdf + "` (`id_etu` int(8) NOT NULL,`note_etu` float NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;")
+            for id_etu, note_etu in dict_etu_note:
                 sql = "INSERT INTO `" + name_pdf + "` (id_etu, note_etu) VALUES (%s, %s)"
                 val = (id_etu, note_etu)
                 noteuniv_cursor.execute(sql, val)
@@ -206,7 +222,7 @@ def update_ranking():
     noteuniv_cursor.execute(sql)
     if list(noteuniv_cursor.fetchall()[0])[0] == 0:
         # Create table shema
-        sql = "CREATE TABLE IF NOT EXISTS `" + ranking_table + "` (`id_etu` int(8) NOT NULL,`moy_etu` float NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+        sql = "CREATE TABLE IF NOT EXISTS `" + ranking_table + "` (`id_etu` int(8) NOT NULL,`moy_etu` float NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
         noteuniv_cursor.execute(sql)
     else:
         # Clear all table
@@ -216,6 +232,7 @@ def update_ranking():
     # Get all id_etu from any PDF file
     sql = "SELECT `id_etu` FROM `2019_10_02_DIEBOLD_LOUX_TPtest_REZS1_Note_unique`"
     noteuniv_cursor.execute(sql)
+    print("Updating ranking...")
     for id_etu in noteuniv_cursor.fetchall():
         sql = "SELECT `name_pdf`, `mini`, `note_coeff`, `type_note` FROM `" + global_table + "`"
         noteuniv_cursor.execute(sql)
@@ -228,10 +245,11 @@ def update_ranking():
             note_etu_mark = noteuniv_cursor.fetchall()
             # Insert notes and coeffs to lists
             if note_data[1] < list(note_etu_mark[0])[0] and note_data[3] == "Note unique":
-                note_etu_mark_coeff = note_data[2]
-                note_etu_mark_final = note_etu_mark[0] * note_etu_mark_coeff
-                all_notes.append(note_etu_mark_final)
-                all_coeff.append(note_etu_mark_coeff)
+                if not list(note_etu_mark[0])[0] == 100:
+                    note_etu_mark_coeff = note_data[2]
+                    note_etu_mark_final = note_etu_mark[0] * note_etu_mark_coeff
+                    all_notes.append(note_etu_mark_final)
+                    all_coeff.append(note_etu_mark_coeff)
 
         # Weighted average on all marks for etu
         moy_etu = sum([sum(x) for x in all_notes]) / sum(all_coeff)
@@ -248,7 +266,7 @@ if __name__ == "__main__":
         process_pdfs()
         if not tables_complete:
             update_ranking()
-        # Commit changes (push)
+            # Commit changes (push)
         db_noteuniv.commit()
         db_noteuniv.close()
     else:
