@@ -244,12 +244,11 @@ def update_ranking():
             noteuniv_cursor.execute(sql)
             note_etu_mark = noteuniv_cursor.fetchall()
             # Insert notes and coeffs to lists
-            if note_data[1] < list(note_etu_mark[0])[0] and note_data[3] == "Note unique":
-                if not list(note_etu_mark[0])[0] == 100:
-                    note_etu_mark_coeff = note_data[2]
-                    note_etu_mark_final = note_etu_mark[0] * note_etu_mark_coeff
-                    all_notes.append(note_etu_mark_final)
-                    all_coeff.append(note_etu_mark_coeff)
+            if list(note_etu_mark[0])[0] < 21 and note_data[3] == "Note unique":
+                note_etu_mark_coeff = note_data[2]
+                note_etu_mark_final = note_etu_mark[0] * note_etu_mark_coeff
+                all_notes.append(note_etu_mark_final)
+                all_coeff.append(note_etu_mark_coeff)
 
         # Weighted average on all marks for etu
         moy_etu = sum([sum(x) for x in all_notes]) / sum(all_coeff)
