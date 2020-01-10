@@ -17,13 +17,7 @@ passwd = os.environ.get("BDD_PASSWD")
 bdd_name = "c1287446_main"
 global_table = "global"
 ranking_table = "ranking"
-
-# Constants for PDFs
 pdf_folder = "notes/"
-msg_nom_pren = "Saisir : NOM et Prénom  Enseignant"
-msg_type_epr = "Sélectionner : type d'épreuve"
-msg_type_note = "Sélectionnez  : type de note"
-msg_nom_module = "Saisir : Nom du Module et Nom du Devoir"
 
 # Load subjects + coeffs
 with open("subjects_coeff.json", "r", encoding="utf-8") as file:
@@ -127,10 +121,14 @@ def process_pdfs():
         list_el = convert_pdf_to_list(pdf_folder + filename)
 
         # Get main infos with text indexes
+        msg_type_note = [x for x in list_el if "type de note" in x.lower()][0]
         type_note = list_el[list_el.index(msg_type_note) + 1]
-        type_epreuve = list_el[list_el.index(msg_type_epr) + 1]
-        name_devoir = list_el[list_el.index(msg_nom_module) + 1]
-        name_ens = list_el[list_el.index(msg_nom_pren) + 1]
+        msg_type_epreuve = [x for x in list_el if "type d'épreuve" in x.lower()][0]
+        type_epreuve = list_el[list_el.index(msg_type_epreuve) + 1]
+        msg_nom_devoir = [x for x in list_el if "nom du devoir" in x.lower()][0]
+        name_devoir = list_el[list_el.index(msg_nom_devoir) + 1]
+        msg_name_ens = [x for x in list_el if "enseignant" in x.lower()][0]
+        name_ens = list_el[list_el.index(msg_name_ens) + 1]
 
         # Get other infos about mark
         link_pdf = "https://seafile.unistra.fr/d/token/files/?p=/" + filename + "&dl=1"
@@ -244,7 +242,7 @@ def update_ranking():
             noteuniv_cursor.execute(sql)
             note_etu_mark = noteuniv_cursor.fetchall()
             # Insert notes and coeffs to lists
-            if list(note_etu_mark[0])[0] < 21 and note_data[3] == "Note unique":
+            if list(note_etu_mark[0])[0] < 21 and any([x in note_data[3] for x in ["Note unique", "Moyenne de notes"]]):
                 note_etu_mark_coeff = note_data[2]
                 note_etu_mark_final = note_etu_mark[0] * note_etu_mark_coeff
                 all_notes.append(note_etu_mark_final)
