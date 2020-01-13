@@ -10,14 +10,14 @@ dotenv.load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 debug = False
 
-token = os.environ.get("TOKEN_SEAFILE")
+token_s1 = os.environ.get("TOKEN_S1")
 host = os.environ.get("BDD_HOST")
 login = os.environ.get("BDD_LOGIN")
 passwd = os.environ.get("BDD_PASSWD")
 bdd_name = "c1287446_main"
-global_table = "global"
-ranking_table = "ranking"
-pdf_folder = "notes/"
+global_table_s1 = "global"
+ranking_table_s1 = "ranking"
+pdf_folder_s1 = "notes/"
 
 # Load subjects + coeffs
 with open("subjects_coeff.json", "r", encoding="utf-8") as file:
@@ -25,7 +25,7 @@ with open("subjects_coeff.json", "r", encoding="utf-8") as file:
 
 def main():
     # Get download token with classic token
-    r = requests.get("https://seafile.unistra.fr/api/v2.1/share-link-zip-task/?share_link_token=" + token + "&path=%2F&_=1570695690269")
+    r = requests.get("https://seafile.unistra.fr/api/v2.1/share-link-zip-task/?share_link_token=" + token_s1 + "&path=/")
     if r.ok:
         token_pdf = r.json()["zip_token"]
 
@@ -43,7 +43,7 @@ def main():
                 if zipfile.filename[-1] == '/':
                     continue
                 zipfile.filename = os.path.basename(zipfile.filename)
-                zip_ref.extract(zipfile, pdf_folder)
+                zip_ref.extract(zipfile, pdf_folder_s1)
     except Exception as e:
         if "BadZipFile" in str(type(e)):
             # Do main again if file is unreadable
@@ -80,23 +80,23 @@ def handle_db():
     db_noteuniv = mysql.connector.connect(user=login, password=passwd, host=host, database=bdd_name)
     noteuniv_cursor = db_noteuniv.cursor()
     # Check if global table exists
-    sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "') AND (TABLE_NAME = '" + global_table + "')"
+    sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "') AND (TABLE_NAME = '" + global_table_s1 + "')"
     noteuniv_cursor.execute(sql)
     if list(noteuniv_cursor.fetchall()[0])[0] == 0:
         # Create table shema
-        sql = "CREATE TABLE IF NOT EXISTS `" + global_table + "` (`id` int(255) NOT NULL KEY AUTO_INCREMENT,`type_note` varchar(255) NOT NULL,`type_epreuve` varchar(255) NOT NULL,`name_devoir` varchar(255) NOT NULL,`name_ens` varchar(255) NOT NULL,`name_pdf` varchar(255) NOT NULL,`link_pdf` varchar(255) NOT NULL,`note_code` varchar(255) NOT NULL,`note_coeff` int(8) NOT NULL,`note_semester` varchar(255) NOT NULL,`note_date` date NOT NULL,`note_total` int(255) NOT NULL,`moy` double NOT NULL,`median` double NOT NULL,`mini` double NOT NULL,`maxi` double NOT NULL,`variance` double NOT NULL,`deviation` double NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
+        sql = "CREATE TABLE IF NOT EXISTS `" + global_table_s1 + "` (`id` int(255) NOT NULL KEY AUTO_INCREMENT,`type_note` varchar(255) NOT NULL,`type_epreuve` varchar(255) NOT NULL,`name_devoir` varchar(255) NOT NULL,`name_ens` varchar(255) NOT NULL,`name_pdf` varchar(255) NOT NULL,`link_pdf` varchar(255) NOT NULL,`note_code` varchar(255) NOT NULL,`note_coeff` int(8) NOT NULL,`note_semester` varchar(255) NOT NULL,`note_date` date NOT NULL,`note_total` int(255) NOT NULL,`moy` double NOT NULL,`median` double NOT NULL,`mini` double NOT NULL,`maxi` double NOT NULL,`variance` double NOT NULL,`deviation` double NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
         noteuniv_cursor.execute(sql)
         records_global = []
         rows_complete = False
         tables_complete = False
     else:
         # Select all data from global table
-        sql = "SELECT `name_pdf` FROM `" + global_table + "`"
+        sql = "SELECT `name_pdf` FROM `" + global_table_s1 + "`"
         noteuniv_cursor.execute(sql)
         records_global = [x[0] for x in noteuniv_cursor.fetchall()]
 
         # Check if rows in global == pdf count
-        if len(records_global) == len(os.listdir(pdf_folder)):
+        if len(records_global) == len(os.listdir(pdf_folder_s1)):
             rows_complete = True
         else:
             rows_complete = False
@@ -104,7 +104,7 @@ def handle_db():
         sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "')"
         noteuniv_cursor.execute(sql)
         # Check if total tables except global and ranking == pdf count
-        if list(noteuniv_cursor.fetchall()[0])[0] - 2 == len(os.listdir(pdf_folder)):
+        if list(noteuniv_cursor.fetchall()[0])[0] - 2 == len(os.listdir(pdf_folder_s1)):
             tables_complete = True
         else:
             tables_complete = False
@@ -116,9 +116,9 @@ def handle_db():
 def process_pdfs():
     global db_noteuniv, noteuniv_cursor
     # Loop PDF files
-    for filename in os.listdir(pdf_folder):
+    for filename in os.listdir(pdf_folder_s1):
         # Get all data from PDF (list)
-        list_el = convert_pdf_to_list(pdf_folder + filename)
+        list_el = convert_pdf_to_list(pdf_folder_s1 + filename)
 
         # Get main infos with text indexes
         msg_type_note = [x for x in list_el if "type de note" in x.lower()][0]
@@ -197,7 +197,7 @@ def process_pdfs():
             print("'" + name_devoir + "' already in global.")
         else:
             print("Adding new line '" + name_devoir + "' in global.")
-            sql = "INSERT INTO " + global_table + " (type_note, type_epreuve, name_devoir, name_ens, name_pdf, link_pdf, note_code, note_coeff, note_semester, note_date, note_total, moy, median, mini, maxi, variance, deviation) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            sql = "INSERT INTO " + global_table_s1 + " (type_note, type_epreuve, name_devoir, name_ens, name_pdf, link_pdf, note_code, note_coeff, note_semester, note_date, note_total, moy, median, mini, maxi, variance, deviation) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
             val = (type_note, type_epreuve, name_devoir, name_ens, name_pdf, link_pdf, note_code, note_coeff, note_semester, note_date, note_total, moy, median, mini, maxi, variance, deviation)
             noteuniv_cursor.execute(sql, val)
 
@@ -207,32 +207,34 @@ def process_pdfs():
         if list(noteuniv_cursor.fetchall()[0])[0] == 0:
             print("Adding table '" + name_devoir + "'.")
             noteuniv_cursor.execute("CREATE TABLE IF NOT EXISTS `" + name_pdf + "` (`id_etu` int(8) NOT NULL,`note_etu` float NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;")
+            all_data = []
             for id_etu, note_etu in dict_etu_note:
-                sql = "INSERT INTO `" + name_pdf + "` (id_etu, note_etu) VALUES (%s, %s)"
-                val = (id_etu, note_etu)
-                noteuniv_cursor.execute(sql, val)
+                all_data.append((id_etu, note_etu))
+            sql = "INSERT INTO `" + name_pdf + "` (id_etu, note_etu) VALUES (%s, %s)"
+            noteuniv_cursor.executemany(sql, all_data)
         else:
             print("'" + name_devoir + "' already exists.")
 
 def update_ranking():
     # Check if global table exists
-    sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "') AND (TABLE_NAME = '" + ranking_table + "')"
+    sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "') AND (TABLE_NAME = '" + ranking_table_s1 + "')"
     noteuniv_cursor.execute(sql)
     if list(noteuniv_cursor.fetchall()[0])[0] == 0:
         # Create table shema
-        sql = "CREATE TABLE IF NOT EXISTS `" + ranking_table + "` (`id_etu` int(8) NOT NULL,`moy_etu` float NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
+        sql = "CREATE TABLE IF NOT EXISTS `" + ranking_table_s1 + "` (`id_etu` int(8) NOT NULL,`moy_etu` float NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
         noteuniv_cursor.execute(sql)
     else:
         # Clear all table
-        sql = "TRUNCATE TABLE `" + ranking_table + "`"
+        sql = "TRUNCATE TABLE `" + ranking_table_s1 + "`"
         noteuniv_cursor.execute(sql)
 
     # Get all id_etu from any PDF file
     sql = "SELECT `id_etu` FROM `2019_10_02_DIEBOLD_LOUX_TPtest_REZS1_Note_unique`"
     noteuniv_cursor.execute(sql)
     print("Updating ranking...")
+    all_data = []
     for id_etu in noteuniv_cursor.fetchall():
-        sql = "SELECT `name_pdf`, `mini`, `note_coeff`, `type_note` FROM `" + global_table + "`"
+        sql = "SELECT `name_pdf`, `mini`, `note_coeff`, `type_note` FROM `" + global_table_s1 + "`"
         noteuniv_cursor.execute(sql)
         all_notes = []
         all_coeff = []
@@ -251,9 +253,9 @@ def update_ranking():
         # Weighted average on all marks for etu
         moy_etu = sum([sum(x) for x in all_notes]) / sum(all_coeff)
         # Insert average for each etu
-        sql = "INSERT INTO `" + ranking_table + "` (id_etu, moy_etu) VALUES (%s, %s)"
-        val = (id_etu[0], round(moy_etu, 2))
-        noteuniv_cursor.execute(sql, val)
+        all_data.append((id_etu[0], round(moy_etu, 2)))
+    sql = "INSERT INTO `" + ranking_table_s1 + "` (id_etu, moy_etu) VALUES (%s, %s)"
+    noteuniv_cursor.executemany(sql, all_data)
 
 if __name__ == "__main__":
     # Start main function and then process PDFs + DB push
