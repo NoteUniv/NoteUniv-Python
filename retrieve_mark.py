@@ -46,6 +46,8 @@ def unzip_archives(name):
     if not os.path.exists(name):
         os.makedirs(name)
         is_empty = True
+    if not os.listdir(name):
+        is_empty = True
     os.remove(name + ".zip")
 
 def convert_pdf_to_list(path):
@@ -102,11 +104,11 @@ def handle_db(name, sem):
         else:
             rows_complete = False
 
-        sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "')"
+        # Check if all PDFs are in all tables
+        sql = "SELECT `TABLE_NAME` FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "')"
         noteuniv_cursor.execute(sql)
-        # FIXME names_pdfs in total_names_tables
-        # Check if total tables except global and ranking == pdf count
-        if list(noteuniv_cursor.fetchall()[0])[0] - 2 == len(os.listdir(name)):
+        all_tables = [x[0] for x in noteuniv_cursor.fetchall()]
+        if all([x.split(".pdf")[0] in all_tables for x in os.listdir(name)]):
             tables_complete = True
         else:
             tables_complete = False
@@ -152,24 +154,24 @@ def process_pdfs(name, sem):
         # Check format of PDF, blank is useless if space in doc
         if " " in list_el:
             list_el = [x for x in list_el if x != ""]
-            etu_start_index = list_el.index("N° Etudiant")
-            note_start_index = list_el.index("Note")
-            nb_etu = int(list_el[etu_start_index - 1])
+            shift = 1
         else:
             # Blank is useless if PDF contains
             if any([x.lower() in ["abi", "abs"] for x in list_el]):
                 list_el = [x for x in list_el if x != ""]
-                etu_start_index = list_el.index("N° Etudiant")
-                note_start_index = list_el.index("Note")
-                nb_etu = int(list_el[etu_start_index - 1])
+                shift = 1
             # Blank mean ABS if not abs or abi is not mentionned
             else:
                 list_el = [x if x != "" else "ABS" for x in list_el]
-                etu_start_index = list_el.index("N° Etudiant")
-                note_start_index = list_el.index("Note")
-                nb_etu = int(list_el[etu_start_index - 2])
+                shift = 2
+
+        msg_etu_index = [x for x in list_el if "etudiant" in x.lower()][-1]
+        etu_start_index = list_el.index(msg_etu_index)
+        msg_note_index = [x for x in list_el if "maximale" in x.lower()][-1]
+        note_start_index = list_el.index(msg_note_index) + 3 # index de maximale
 
         # Get lists of all num etu and all marks
+        nb_etu = int(list_el[etu_start_index - shift])
         num_etu = list_el[etu_start_index + 1:etu_start_index + nb_etu + 1]
         note_etu = list_el[note_start_index + 1:note_start_index + nb_etu + 1]
 
@@ -232,6 +234,8 @@ def update_ranking():
             print("Cleaning up ranking_" + sem + " database.")
         sql = "TRUNCATE TABLE `ranking_" + sem + "`"
         noteuniv_cursor.execute(sql)
+    if is_empty:
+        return
 
     # Get all id_etu from any PDF file (latest processed)
     sql = "SELECT `id_etu` FROM `" + name_pdf + "`"
@@ -272,7 +276,7 @@ if __name__ == "__main__":
         unzip_archives(name)
         handle_db(name, sem)
         process_pdfs(name, sem)
-        if not tables_complete or is_empty:
+        if not tables_complete:
             update_ranking()
         # Commit changes (push)
         db_noteuniv.commit()
