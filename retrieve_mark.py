@@ -20,35 +20,35 @@ bdd_name = "c1287446_main"
 with open("subjects_coeff.json", "r", encoding="utf-8") as file:
     subjects = json.load(file)
 
-def download_archives(name, val):
+def download_archives(sem_name, sem_token):
     # Get download token with classic token
-    r = requests.get("https://seafile.unistra.fr/api/v2.1/share-link-zip-task/?share_link_token=" + val + "&path=/")
+    r = requests.get("https://seafile.unistra.fr/api/v2.1/share-link-zip-task/?share_link_token=" + sem_token + "&path=/")
     if r.ok:
         token_pdf = r.json()["zip_token"]
 
     # Get marks using download token_pdf (cooldown to prepare file zipping)
-    r = requests.get("https://seafile.unistra.fr/seafhttp/zip/" + token_pdf, time.sleep(1))
+    r = requests.get("https://seafile.unistra.fr/seafhttp/zip/" + token_pdf, time.sleep(2))
     # Download as stream (works better)
-    with open(name + ".zip", "wb") as file:
+    with open(sem_name + ".zip", "wb") as file:
         for chunk in r:
             file.write(chunk)
 
-def unzip_archives(name):
+def unzip_archives(sem_name):
     global is_empty
     # Open all zip files and extract them
-    with ZipFile(name + ".zip", "r") as zip_ref:
+    with ZipFile(sem_name + ".zip", "r") as zip_ref:
         for zipfile in zip_ref.infolist():
             if zipfile.filename[-1] == '/':
                 continue
             zipfile.filename = os.path.basename(zipfile.filename)
-            zip_ref.extract(zipfile, name)
+            zip_ref.extract(zipfile, sem_name)
     is_empty = False
-    if not os.path.exists(name):
-        os.makedirs(name)
+    if not os.path.exists(sem_name):
+        os.makedirs(sem_name)
         is_empty = True
-    if not os.listdir(name):
+    if not os.listdir(sem_name):
         is_empty = True
-    os.remove(name + ".zip")
+    os.remove(sem_name + ".zip")
 
 def convert_pdf_to_list(path):
     # Writing in StringIO doc to store pdf text as list
@@ -66,7 +66,7 @@ def convert_pdf_to_list(path):
     output.close()
     return text.split("\n")
 
-def handle_db(name, sem):
+def handle_db(sem_name, sem):
     global db_noteuniv, noteuniv_cursor, records_global, rows_complete, tables_complete
     # Create main database if not exists
     db_noteuniv1 = mysql.connector.connect(host=host, user=login, passwd=passwd)
@@ -86,7 +86,7 @@ def handle_db(name, sem):
     if list(noteuniv_cursor.fetchall()[0])[0] == 0:
         # Create table shema
         if verbose:
-            print("Creating global_" + sem + " database.")
+            print("Creating global_" + sem + " table.")
         sql = "CREATE TABLE IF NOT EXISTS `global_" + sem + "` (`id` int(255) NOT NULL KEY AUTO_INCREMENT,`type_note` varchar(255) NOT NULL,`type_epreuve` varchar(255) NOT NULL,`name_devoir` varchar(255) NOT NULL,`name_ens` varchar(255) NOT NULL,`name_pdf` varchar(255) NOT NULL,`link_pdf` varchar(255) NOT NULL,`note_code` varchar(255) NOT NULL,`note_coeff` int(8) NOT NULL,`note_semester` varchar(255) NOT NULL,`note_date` date NOT NULL,`note_total` int(255) NOT NULL,`moy` double NOT NULL,`median` double NOT NULL,`mini` double NOT NULL,`maxi` double NOT NULL,`variance` double NOT NULL,`deviation` double NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
         noteuniv_cursor.execute(sql)
         records_global = []
@@ -99,7 +99,7 @@ def handle_db(name, sem):
         records_global = [x[0] for x in noteuniv_cursor.fetchall()]
 
         # Check if rows in global == pdf count
-        if len(records_global) == len(os.listdir(name)):
+        if len(records_global) == len(os.listdir(sem_name)):
             rows_complete = True
         else:
             rows_complete = False
@@ -108,7 +108,7 @@ def handle_db(name, sem):
         sql = "SELECT `TABLE_NAME` FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "')"
         noteuniv_cursor.execute(sql)
         all_tables = [x[0] for x in noteuniv_cursor.fetchall()]
-        if all([x.split(".pdf")[0] in all_tables for x in os.listdir(name)]):
+        if all([x.split(".pdf")[0] in all_tables for x in os.listdir(sem_name)]):
             tables_complete = True
         else:
             tables_complete = False
@@ -117,12 +117,15 @@ def handle_db(name, sem):
         if rows_complete and tables_complete:
             exit("Nothing more to add, tables and global are not updated.")
 
-def process_pdfs(name, sem):
+def process_pdfs(sem_name, sem):
     global db_noteuniv, noteuniv_cursor, name_pdf
     # Loop PDF files
-    for filename in os.listdir(name):
+    for filename in [x for x in os.listdir(sem_name) if x.startswith("20")]:
         # Get all data from PDF (list)
-        list_el = convert_pdf_to_list(name + "/" + filename)
+        list_el = convert_pdf_to_list(sem_name + "/" + filename)
+
+        if verbose:
+            print("Processing '" + filename + "'.")
 
         # Get main infos with text indexes
         msg_type_note = [x for x in list_el if "type de note" in x.lower()][0]
@@ -167,8 +170,8 @@ def process_pdfs(name, sem):
 
         msg_etu_index = [x for x in list_el if "etudiant" in x.lower()][-1]
         etu_start_index = list_el.index(msg_etu_index)
-        msg_note_index = [x for x in list_el if "maximale" in x.lower()][-1]
-        note_start_index = list_el.index(msg_note_index) + 3 # index de maximale
+        msg_note_index = [x for x in list_el if "Note" in x][-1]
+        note_start_index = list_el.index(msg_note_index)
 
         # Get lists of all num etu and all marks
         nb_etu = int(list_el[etu_start_index - shift])
@@ -199,8 +202,8 @@ def process_pdfs(name, sem):
             if verbose:
                 print("Adding new line '" + name_devoir + "' in global.")
             sql = "INSERT INTO global_" + sem + " (type_note, type_epreuve, name_devoir, name_ens, name_pdf, link_pdf, note_code, note_coeff, note_semester, note_date, note_total, moy, median, mini, maxi, variance, deviation) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-            val = (type_note, type_epreuve, name_devoir, name_ens, name_pdf, link_pdf, note_code, note_coeff, note_semester, note_date, note_total, moy, median, mini, maxi, variance, deviation)
-            noteuniv_cursor.execute(sql, val)
+            global_data = (type_note, type_epreuve, name_devoir, name_ens, name_pdf, link_pdf, note_code, note_coeff, note_semester, note_date, note_total, moy, median, mini, maxi, variance, deviation)
+            noteuniv_cursor.execute(sql, global_data)
 
         # Test if table exists
         sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "') AND (TABLE_NAME = '" + name_pdf + "')"
@@ -269,13 +272,13 @@ def update_ranking():
 
 if __name__ == "__main__":
     # Start main function and then process PDFs + DB push
-    for key, val in env_tokens.items():
-        name = key.lower()
-        sem = name.split("_")[-1]
-        download_archives(name, val)
-        unzip_archives(name)
-        handle_db(name, sem)
-        process_pdfs(name, sem)
+    for sem_code, sem_token in env_tokens.items():
+        sem_name = sem_code.lower()
+        sem = sem_name.split("_")[-1]
+        download_archives(sem_name, sem_token)
+        unzip_archives(sem_name)
+        handle_db(sem_name, sem)
+        process_pdfs(sem_name, sem)
         if not tables_complete:
             update_ranking()
         # Commit changes (push)
