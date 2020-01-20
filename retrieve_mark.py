@@ -110,6 +110,67 @@ def handle_db(sem_name, sem):
         if all([x.split(".pdf")[0] in all_tables for x in os.listdir(sem_name)]):
             tables_complete = True
 
+def send_webbhook(sem, note_code, name_ens, name_devoir, type_note, type_epreuve, note_date, moy):
+    # JSON webhook for discord message
+    webhook_data = {
+        "username": "NoteUniv",
+        "avatar_url": "https://noteuniv.fr/assets/images/logo_rounded.png",
+        "embeds": [
+            {
+                "title": f"Nouvelle note de {note_code} sur NoteUniv !",
+                "description": "Une nouvelle note a été publiée il y a peu, allez la voir sur le site web !",
+                "url": "https://noteuniv.fr/",
+                "color": 1114419,
+                "thumbnail": {
+                    "url": "https://noteuniv.fr/assets/images/logo_rounded.png"
+                },
+                "fields": [
+                    {
+                        "name": "Enseignant :",
+                        "value": name_ens,
+                        "inline": True
+                    },
+                    {
+                        "name": "Devoir :",
+                        "value": name_devoir,
+                        "inline": True
+                    },
+                    {
+                        "name": "Type de note :",
+                        "value": type_note,
+                        "inline": True
+                    },
+                    {
+                        "name": "Type épreuve :",
+                        "value": type_epreuve,
+                        "inline": True
+                    },
+                    {
+                        "name": "Date :",
+                        "value": note_date,
+                        "inline": True
+                    },
+                    {
+                        "name": "Moyenne :",
+                        # Need to convert to string!
+                        "value": str(round(moy, 2)),
+                        "inline": True
+                    }
+                ],
+                "footer": {
+                    "icon_url": "https://noteuniv.fr/assets/images/noteuniv_logo.jpg",
+                    "text": "Merci d'utiliser NoteUniv ♥"
+                }
+            }
+        ]
+    }
+
+    # Send a webhook in the correct channel for every MMI
+    if sem == "s1" or sem == "s2":
+        requests.post(webhook_url_1, json=webhook_data)
+    elif sem == "s3" or sem == "s4":
+        requests.post(webhook_url_2, json=webhook_data)
+
 def process_pdfs(sem_name, sem):
     global db_noteuniv, noteuniv_cursor, name_pdf
     # Loop PDF files
@@ -200,6 +261,9 @@ def process_pdfs(sem_name, sem):
             global_data = (type_note, type_epreuve, name_devoir, name_ens, name_pdf, link_pdf, note_code, note_coeff, note_semester, note_date, note_total, moy, median, mini, maxi, variance, deviation)
             noteuniv_cursor.execute(sql, global_data)
 
+            # Send a discord webhook for every mark if not in global
+            send_webbhook(sem, note_code, name_ens, name_devoir, type_note, type_epreuve, note_date, moy)
+
         # Test if table exists
         sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "') AND (TABLE_NAME = '" + name_pdf + "')"
         noteuniv_cursor.execute(sql)
@@ -215,67 +279,6 @@ def process_pdfs(sem_name, sem):
         else:
             if verbose:
                 print("'" + name_devoir + "' already exists.")
-
-        if not rows_complete and not tables_complete:
-            send_webbhook(sem, note_code, name_ens, name_devoir, type_note, type_epreuve, note_date, moy)
-
-def send_webbhook(sem, note_code, name_ens, name_devoir, type_note, type_epreuve, note_date, moy):
-    webhook_data = {
-        "username": "NoteUniv",
-        "avatar_url": "https://noteuniv.fr/assets/images/logo_rounded.png",
-        "embeds": [
-            {
-                "title": f"Nouvelle note de {note_code} sur NoteUniv !",
-                "description": "Une nouvelle note a été publiée il y a peu, allez la voir sur le site web !",
-                "url": "https://noteuniv.fr/",
-                "color": 1114419,
-                "thumbnail": {
-                    "url": "https://noteuniv.fr/assets/images/logo_rounded.png"
-                },
-                "fields": [
-                    {
-                        "name": "Enseignant :",
-                        "value": name_ens,
-                        "inline": True
-                    },
-                    {
-                        "name": "Devoir :",
-                        "value": name_devoir,
-                        "inline": True
-                    },
-                    {
-                        "name": "Type de note :",
-                        "value": type_note,
-                        "inline": True
-                    },
-                    {
-                        "name": "Type épreuve :",
-                        "value": type_epreuve,
-                        "inline": True
-                    },
-                    {
-                        "name": "Date :",
-                        "value": note_date,
-                        "inline": True
-                    },
-                    {
-                        "name": "Moyenne :",
-                        "value": round(moy, 2),
-                        "inline": True
-                    }
-                ],
-                "footer": {
-                    "icon_url": "https://noteuniv.fr/assets/images/noteuniv_logo.jpg",
-                    "text": "Merci d'utiliser NoteUniv ♥"
-                }
-            }
-        ]
-    }
-
-    if sem == "s1" or sem == "s2":
-        requests.post(webhook_url_1, json=webhook_data)
-    elif sem == "s3" or sem == "s4":
-        requests.post(webhook_url_2, json=webhook_data)
 
 def update_ranking():
     # Check if global table exists
@@ -299,8 +302,6 @@ def update_ranking():
     # Get all id_etu from any PDF file (latest processed)
     sql = "SELECT `id_etu` FROM `" + name_pdf + "`"
     noteuniv_cursor.execute(sql)
-    if verbose:
-        print("Updating ranking...")
     sql_data = []
     for id_etu in noteuniv_cursor.fetchall():
         sql = "SELECT `name_pdf`, `mini`, `note_coeff`, `type_note` FROM `global_" + sem + "`"
@@ -340,6 +341,8 @@ if __name__ == "__main__":
             continue
         process_pdfs(sem_name, sem)
         if not tables_complete:
+            if verbose:
+                print("Updating ranking...")
             update_ranking()
         # Commit changes (push)
         db_noteuniv.commit()
