@@ -15,7 +15,8 @@ host = os.environ.get("BDD_HOST")
 login = os.environ.get("BDD_LOGIN")
 passwd = os.environ.get("BDD_PASSWD")
 bdd_name = "c1287446_main"
-webhook_url = os.environ.get("WEBHOOK_URL")
+webhook_url_1 = os.environ.get("WEBHOOK_URL_1")
+webhook_url_2 = os.environ.get("WEBHOOK_URL_2")
 
 # Load subjects + coeffs
 with open("subjects_coeff.json", "r", encoding="utf-8") as file:
@@ -84,6 +85,8 @@ def handle_db(sem_name, sem):
     # Check if global table exists
     sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "') AND (TABLE_NAME = 'global_" + sem + "')"
     noteuniv_cursor.execute(sql)
+    rows_complete = False
+    tables_complete = False
     if list(noteuniv_cursor.fetchall()[0])[0] == 0:
         # Create table shema
         if verbose:
@@ -91,8 +94,6 @@ def handle_db(sem_name, sem):
         sql = "CREATE TABLE IF NOT EXISTS `global_" + sem + "` (`id` int(255) NOT NULL KEY AUTO_INCREMENT,`type_note` varchar(255) NOT NULL,`type_epreuve` varchar(255) NOT NULL,`name_devoir` varchar(255) NOT NULL,`name_ens` varchar(255) NOT NULL,`name_pdf` varchar(255) NOT NULL,`link_pdf` varchar(255) NOT NULL,`note_code` varchar(255) NOT NULL,`note_coeff` int(8) NOT NULL,`note_semester` varchar(255) NOT NULL,`note_date` date NOT NULL,`note_total` int(255) NOT NULL,`moy` double NOT NULL,`median` double NOT NULL,`mini` double NOT NULL,`maxi` double NOT NULL,`variance` double NOT NULL,`deviation` double NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
         noteuniv_cursor.execute(sql)
         records_global = []
-        rows_complete = False
-        tables_complete = False
     else:
         # Select all data from global table
         sql = "SELECT `name_pdf` FROM `global_" + sem + "`"
@@ -102,8 +103,6 @@ def handle_db(sem_name, sem):
         # Check if rows in global == pdf count
         if len(records_global) == len(os.listdir(sem_name)):
             rows_complete = True
-        else:
-            rows_complete = False
 
         # Check if all PDFs are in all tables
         sql = "SELECT `TABLE_NAME` FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "')"
@@ -111,8 +110,6 @@ def handle_db(sem_name, sem):
         all_tables = [x[0] for x in noteuniv_cursor.fetchall()]
         if all([x.split(".pdf")[0] in all_tables for x in os.listdir(sem_name)]):
             tables_complete = True
-        else:
-            tables_complete = False
 
         # Exit if nothing to update (avoid useless requests)
         if rows_complete and tables_complete:
@@ -223,9 +220,9 @@ def process_pdfs(sem_name, sem):
                 print("'" + name_devoir + "' already exists.")
 
         if not rows_complete and not tables_complete:
-            send_webbhook(note_code, name_ens, name_devoir, type_note, type_epreuve, note_date, moy)
+            send_webbhook(sem, note_code, name_ens, name_devoir, type_note, type_epreuve, note_date, moy)
 
-def send_webbhook(note_code, name_ens, name_devoir, type_note, type_epreuve, note_date, moy):
+def send_webbhook(sem, note_code, name_ens, name_devoir, type_note, type_epreuve, note_date, moy):
     webhook_data = {
         "username": "NoteUniv",
         "avatar_url": "https://noteuniv.fr/assets/images/logo_rounded.png",
@@ -278,7 +275,10 @@ def send_webbhook(note_code, name_ens, name_devoir, type_note, type_epreuve, not
         ]
     }
 
-    requests.post(webhook_url, json=webhook_data)
+    if sem == "s1" or sem == "s2":
+        requests.post(webhook_url_1, json=webhook_data)
+    elif sem == "s3" or sem == "s4":
+        requests.post(webhook_url_2, json=webhook_data)
 
 def update_ranking():
     # Check if global table exists
