@@ -6,7 +6,7 @@ from zipfile import ZipFile
 import os, json, time, requests, zipfile, io, dotenv, statistics, mysql.connector
 
 # Load tokens + auth for mysql
-dotenv.load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+dotenv.load_dotenv('.env')
 
 verbose = True
 
@@ -15,6 +15,7 @@ host = os.environ.get("BDD_HOST")
 login = os.environ.get("BDD_LOGIN")
 passwd = os.environ.get("BDD_PASSWD")
 bdd_name = "c1287446_main"
+webhook_url = os.environ.get("WEBHOOK_URL")
 
 # Load subjects + coeffs
 with open("subjects_coeff.json", "r", encoding="utf-8") as file:
@@ -212,14 +213,72 @@ def process_pdfs(sem_name, sem):
             if verbose:
                 print("Adding table '" + name_devoir + "'.")
             noteuniv_cursor.execute("CREATE TABLE IF NOT EXISTS `" + name_pdf + "` (`id_etu` int(8) NOT NULL,`note_etu` float NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;")
-            all_data = []
+            sql_data = []
             for id_etu, note_etu in dict_etu_note:
-                all_data.append((id_etu, note_etu))
+                sql_data.append((id_etu, note_etu))
             sql = "INSERT INTO `" + name_pdf + "` (id_etu, note_etu) VALUES (%s, %s)"
-            noteuniv_cursor.executemany(sql, all_data)
+            noteuniv_cursor.executemany(sql, sql_data)
         else:
             if verbose:
                 print("'" + name_devoir + "' already exists.")
+
+        if not rows_complete and not tables_complete:
+            send_webbhook(note_code, name_ens, name_devoir, type_note, type_epreuve, note_date, moy)
+
+def send_webbhook(note_code, name_ens, name_devoir, type_note, type_epreuve, note_date, moy):
+    webhook_data = {
+        "username": "NoteUniv",
+        "avatar_url": "https://noteuniv.fr/assets/images/logo_rounded.png",
+        "embeds": [
+            {
+                "title": f"Nouvelle note de {note_code} sur NoteUniv !",
+                "description": "Une nouvelle note a été publiée il y a peu, allez la voir sur le site web !",
+                "url": "https://noteuniv.fr/",
+                "color": 1114419,
+                "thumbnail": {
+                    "url": "https://noteuniv.fr/assets/images/logo_rounded.png"
+                },
+                "fields": [
+                    {
+                        "name": "Enseignant :",
+                        "value": name_ens,
+                        "inline": True
+                    },
+                    {
+                        "name": "Devoir :",
+                        "value": name_devoir,
+                        "inline": True
+                    },
+                    {
+                        "name": "Type de note :",
+                        "value": type_note,
+                        "inline": True
+                    },
+                    {
+                        "name": "Type épreuve :",
+                        "value": type_epreuve,
+                        "inline": True
+                    },
+                    {
+                        "name": "Date :",
+                        "value": note_date,
+                        "inline": True
+                    },
+                    {
+                        "name": "Moyenne :",
+                        "value": round(moy, 2),
+                        "inline": True
+                    }
+                ],
+                "footer": {
+                    "icon_url": "https://noteuniv.fr/assets/images/noteuniv_logo.jpg",
+                    "text": "Merci d'utiliser NoteUniv ♥"
+                }
+            }
+        ]
+    }
+
+    requests.post(webhook_url, json=webhook_data)
 
 def update_ranking():
     # Check if global table exists
@@ -245,7 +304,7 @@ def update_ranking():
     noteuniv_cursor.execute(sql)
     if verbose:
         print("Updating ranking...")
-    all_data = []
+    sql_data = []
     for id_etu in noteuniv_cursor.fetchall():
         sql = "SELECT `name_pdf`, `mini`, `note_coeff`, `type_note` FROM `global_" + sem + "`"
         noteuniv_cursor.execute(sql)
@@ -266,9 +325,9 @@ def update_ranking():
         # Weighted average on all marks for etu
         moy_etu = sum([sum(x) for x in all_notes]) / sum(all_coeff)
         # Insert average for each etu
-        all_data.append((id_etu[0], round(moy_etu, 2)))
+        sql_data.append((id_etu[0], round(moy_etu, 2)))
     sql = "INSERT INTO `ranking_" + sem + "` (id_etu, moy_etu) VALUES (%s, %s)"
-    noteuniv_cursor.executemany(sql, all_data)
+    noteuniv_cursor.executemany(sql, sql_data)
 
 if __name__ == "__main__":
     # Start main function and then process PDFs + DB push
