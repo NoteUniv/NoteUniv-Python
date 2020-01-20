@@ -2,7 +2,6 @@ from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
-from zipfile import ZipFile
 import os, json, time, requests, zipfile, io, dotenv, statistics, mysql.connector
 
 # Load tokens + auth for mysql
@@ -10,7 +9,7 @@ dotenv.load_dotenv('.env')
 
 verbose = True
 
-env_tokens = {key: value for key, value in os.environ.items() if "MARKS_S1" in key}
+env_tokens = {key: value for key, value in os.environ.items() if "MARKS_S" in key}
 host = os.environ.get("BDD_HOST")
 login = os.environ.get("BDD_LOGIN")
 passwd = os.environ.get("BDD_PASSWD")
@@ -38,12 +37,12 @@ def download_archives(sem_name, sem_token):
 def unzip_archives(sem_name):
     global is_empty
     # Open all zip files and extract them
-    with ZipFile(sem_name + ".zip", "r") as zip_ref:
-        for zipfile in zip_ref.infolist():
-            if zipfile.filename[-1] == '/':
+    with zipfile.ZipFile(sem_name + ".zip", "r") as zip_ref:
+        for zip_file in zip_ref.infolist():
+            if zip_file.filename[-1] == '/':
                 continue
-            zipfile.filename = os.path.basename(zipfile.filename)
-            zip_ref.extract(zipfile, sem_name)
+            zip_file.filename = os.path.basename(zip_file.filename)
+            zip_ref.extract(zip_file, sem_name)
     is_empty = False
     if not os.path.exists(sem_name):
         os.makedirs(sem_name)
@@ -111,10 +110,6 @@ def handle_db(sem_name, sem):
         if all([x.split(".pdf")[0] in all_tables for x in os.listdir(sem_name)]):
             tables_complete = True
 
-        # Exit if nothing to update (avoid useless requests)
-        if rows_complete and tables_complete:
-            exit("Nothing more to add, tables and global are not updated.")
-
 def process_pdfs(sem_name, sem):
     global db_noteuniv, noteuniv_cursor, name_pdf
     # Loop PDF files
@@ -140,6 +135,8 @@ def process_pdfs(sem_name, sem):
         name_pdf_raw = link_pdf.split("/")[-1].split(".pdf")[0]
         name_pdf = name_pdf_raw.replace(" ", "_")[:64]
         y, m, d, _ = filename.split("_", 3)
+        if len(y) != 4:
+            y = "2020"
         note_date = f"{y}-{m}-{d}"
 
         # Loop keys to know code and coeff
@@ -337,6 +334,10 @@ if __name__ == "__main__":
         download_archives(sem_name, sem_token)
         unzip_archives(sem_name)
         handle_db(sem_name, sem)
+        # Continue if nothing to update (avoid useless requests)
+        if rows_complete and tables_complete:
+            print("Nothing more to add, tables and global are not updated.")
+            continue
         process_pdfs(sem_name, sem)
         if not tables_complete:
             update_ranking()
