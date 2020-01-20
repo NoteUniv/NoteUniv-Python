@@ -103,5 +103,8 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+# VS Code
+.code
+
 marks_*
 +extra/
