@@ -105,6 +105,7 @@ venv.bak/
 
 # VS Code
 .code
+.vscode
 
 marks_*
 +extra/
