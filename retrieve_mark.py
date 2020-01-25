@@ -21,6 +21,9 @@ webhook_url_2 = os.environ.get("WEBHOOK_URL_2")
 with open("subjects_coeff.json", "r", encoding="utf-8") as file:
     subjects = json.load(file)
 
+def to_name(thing):
+    return thing.split("/")[-1].split(".pdf")[0].replace(" ", "_")[:64]
+
 def download_archives(sem_name, sem_token):
     # Get download token with classic token
     r = requests.get("https://seafile.unistra.fr/api/v2.1/share-link-zip-task/?share_link_token=" + sem_token + "&path=/")
@@ -68,7 +71,7 @@ def convert_pdf_to_list(path):
     return text.split("\n")
 
 def handle_db(sem_name, sem):
-    global db_noteuniv, noteuniv_cursor, records_global, rows_complete, tables_complete
+    global db_noteuniv, noteuniv_cursor, records_global, rows_complete, tables_complete, list_pdf_changed
     # Create main database if not exists
     db_noteuniv1 = mysql.connector.connect(host=host, user=login, passwd=passwd)
     noteuniv_cursor1 = db_noteuniv1.cursor()
@@ -90,14 +93,14 @@ def handle_db(sem_name, sem):
         # Create table shema
         if verbose:
             print("Creating global_" + sem + " table.")
-        sql = "CREATE TABLE IF NOT EXISTS `global_" + sem + "` (`id` int(255) NOT NULL KEY AUTO_INCREMENT,`type_note` varchar(255) NOT NULL,`type_epreuve` varchar(255) NOT NULL,`name_devoir` varchar(255) NOT NULL,`name_ens` varchar(255) NOT NULL,`name_pdf` varchar(255) NOT NULL,`link_pdf` varchar(255) NOT NULL,`note_code` varchar(255) NOT NULL,`note_coeff` int(8) NOT NULL,`note_semester` varchar(255) NOT NULL,`note_date` date NOT NULL,`note_total` int(255) NOT NULL,`moy` double NOT NULL,`median` double NOT NULL,`mini` double NOT NULL,`maxi` double NOT NULL,`variance` double NOT NULL,`deviation` double NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
+        sql = "CREATE TABLE IF NOT EXISTS `global_" + sem + "` (`id` int NOT NULL KEY AUTO_INCREMENT,`type_note` varchar(255) NOT NULL,`type_exam` varchar(255) NOT NULL,`name_note` varchar(255) NOT NULL,`name_teacher` varchar(255) NOT NULL,`name_pdf` varchar(255) NOT NULL,`link_pdf` varchar(255) NOT NULL,`size_pdf` int NOT NULL,`note_code` varchar(63) NOT NULL,`note_semester` varchar(63) NOT NULL,`note_date_c` date NOT NULL,`note_date_m` timestamp NOT NULL,`note_coeff` tinyint NOT NULL,`note_total` tinyint NOT NULL,`average` double NOT NULL,`median` double NOT NULL,`minimum` double NOT NULL,`maximum` double NOT NULL,`variance` double NOT NULL,`deviation` double NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
         noteuniv_cursor.execute(sql)
         records_global = []
     else:
         # Select all data from global table
-        sql = "SELECT `name_pdf` FROM `global_" + sem + "`"
+        sql = "SELECT `name_pdf`, `size_pdf` FROM `global_" + sem + "`"
         noteuniv_cursor.execute(sql)
-        records_global = [x[0] for x in noteuniv_cursor.fetchall()]
+        records_global = noteuniv_cursor.fetchall()
 
         # Check if rows in global == pdf count
         if len(records_global) == len(os.listdir(sem_name)):
@@ -107,10 +110,16 @@ def handle_db(sem_name, sem):
         sql = "SELECT `TABLE_NAME` FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "')"
         noteuniv_cursor.execute(sql)
         all_tables = [x[0] for x in noteuniv_cursor.fetchall()]
-        if all([x.split(".pdf")[0] in all_tables for x in os.listdir(sem_name)]):
+        if all([to_name(x) in all_tables for x in os.listdir(sem_name)]):
             tables_complete = True
 
-def send_webbhook(sem, note_code, name_ens, name_devoir, type_note, type_epreuve, note_date, moy):
+        # Check if any PDF changed
+        list_pdf_changed = []
+        for x in os.listdir(sem_name):
+            if os.stat(sem_name + "/" + x).st_size != dict(records_global)[to_name(x)]:
+                list_pdf_changed.append(to_name(x))
+
+def send_webbhook(sem, note_code, name_teacher, name_note, type_note, type_exam, note_date_c, average):
     # JSON webhook for discord message
     webhook_data = {
         "username": "NoteUniv",
@@ -127,12 +136,12 @@ def send_webbhook(sem, note_code, name_ens, name_devoir, type_note, type_epreuve
                 "fields": [
                     {
                         "name": "Enseignant :",
-                        "value": name_ens,
+                        "value": name_teacher,
                         "inline": True
                     },
                     {
                         "name": "Devoir :",
-                        "value": name_devoir,
+                        "value": name_note,
                         "inline": True
                     },
                     {
@@ -142,18 +151,18 @@ def send_webbhook(sem, note_code, name_ens, name_devoir, type_note, type_epreuve
                     },
                     {
                         "name": "Type épreuve :",
-                        "value": type_epreuve,
+                        "value": type_exam,
                         "inline": True
                     },
                     {
                         "name": "Date :",
-                        "value": note_date,
+                        "value": note_date_c,
                         "inline": True
                     },
                     {
                         "name": "Moyenne :",
                         # Need to convert to string!
-                        "value": str(round(moy, 2)),
+                        "value": str(round(average, 2)),
                         "inline": True
                     }
                 ],
@@ -171,10 +180,10 @@ def send_webbhook(sem, note_code, name_ens, name_devoir, type_note, type_epreuve
     elif sem == "s3" or sem == "s4":
         requests.post(webhook_url_2, json=webhook_data)
 
-def process_pdfs(sem_name, sem):
+def process_pdfs(sem_name, sem, sem_token):
     global db_noteuniv, noteuniv_cursor, name_pdf
     # Loop PDF files
-    for filename in [x for x in os.listdir(sem_name) if x.startswith("20")]:
+    for filename in [x for x in os.listdir(sem_name) if x.startswith("20")]: # Exclude other formats
         # Get all data from PDF (list)
         list_el = convert_pdf_to_list(sem_name + "/" + filename)
 
@@ -184,21 +193,22 @@ def process_pdfs(sem_name, sem):
         # Get main infos with text indexes
         msg_type_note = [x for x in list_el if "type de note" in x.lower()][0]
         type_note = list_el[list_el.index(msg_type_note) + 1]
-        msg_type_epreuve = [x for x in list_el if "type d'épreuve" in x.lower()][0]
-        type_epreuve = list_el[list_el.index(msg_type_epreuve) + 1]
+        msg_type_exam = [x for x in list_el if "type d'épreuve" in x.lower()][0]
+        type_exam = list_el[list_el.index(msg_type_exam) + 1]
         msg_nom_devoir = [x for x in list_el if "nom du devoir" in x.lower()][0]
-        name_devoir = list_el[list_el.index(msg_nom_devoir) + 1]
-        msg_name_ens = [x for x in list_el if "enseignant" in x.lower()][0]
-        name_ens = list_el[list_el.index(msg_name_ens) + 1]
+        name_note = list_el[list_el.index(msg_nom_devoir) + 1]
+        msg_name_teacher = [x for x in list_el if "enseignant" in x.lower()][0]
+        name_teacher = list_el[list_el.index(msg_name_teacher) + 1]
 
         # Get other infos about mark
-        link_pdf = "https://seafile.unistra.fr/d/token/files/?p=/" + filename + "&dl=1"
-        name_pdf_raw = link_pdf.split("/")[-1].split(".pdf")[0]
-        name_pdf = name_pdf_raw.replace(" ", "_")[:64]
+        link_pdf = "https://seafile.unistra.fr/d/" + sem_token + "/files/?p=/" + filename
+        name_pdf = to_name(link_pdf)
+        size_pdf = os.stat(sem_name + "/" + filename).st_size
         y, m, d, _ = filename.split("_", 3)
         if len(y) != 4:
-            y = "2020"
-        note_date = f"{y}-{m}-{d}"
+            y = time.strftime("%Y")
+        note_date_c = f"{y}-{m}-{d}"
+        note_date_m = time.strftime("%y-%m-%d %H:%M:%S", time.gmtime(os.stat(sem_name + "/" + filename).st_atime))
 
         # Loop keys to know code and coeff
         for main_key in subjects[sem].keys():
@@ -237,10 +247,10 @@ def process_pdfs(sem_name, sem):
         # Calculate many stats from marks
         clear_note_etu = [float(x.replace(",", ".")) for x in note_etu if "," in x]
         note_total = len(clear_note_etu)
-        moy = statistics.mean(clear_note_etu)
+        average = statistics.mean(clear_note_etu)
         median = statistics.median(clear_note_etu)
-        mini = min(clear_note_etu)
-        maxi = max(clear_note_etu)
+        minimum = min(clear_note_etu)
+        maximum = max(clear_note_etu)
         variance = statistics.variance(clear_note_etu)
         deviation = statistics.stdev(clear_note_etu)
 
@@ -251,26 +261,31 @@ def process_pdfs(sem_name, sem):
         dict_etu_note = list(zip(num_etu, note_etu))
 
         # Test if line exists in global
-        if name_pdf in records_global:
+        if name_pdf in [x[0] for x in records_global]:
             if verbose:
-                print("'" + name_devoir + "' already in global.")
+                print("'" + name_note + "' already in global.")
+            if name_pdf in list_pdf_changed:
+                print("'" + name_note + "' needs to be updated for new marks.")
+                sql = "UPDATE global_s1 SET size_pdf = %s, note_date_m = %s, note_total = %s, average = %s, median = %s, minimum = %s, maximum = %s, variance = %s, deviation = %s WHERE name_pdf = %s"
+                sql_data = (size_pdf, note_date_m, note_total, average, median, minimum, maximum, variance, deviation, name_pdf)
+                noteuniv_cursor.execute(sql, sql_data)
         else:
             if verbose:
-                print("Adding new line '" + name_devoir + "' in global.")
-            sql = "INSERT INTO global_" + sem + " (type_note, type_epreuve, name_devoir, name_ens, name_pdf, link_pdf, note_code, note_coeff, note_semester, note_date, note_total, moy, median, mini, maxi, variance, deviation) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-            global_data = (type_note, type_epreuve, name_devoir, name_ens, name_pdf, link_pdf, note_code, note_coeff, note_semester, note_date, note_total, moy, median, mini, maxi, variance, deviation)
+                print("Adding new line '" + name_note + "' in global.")
+            sql = "INSERT INTO global_" + sem + " (type_note, type_exam, name_note, name_teacher, name_pdf, link_pdf, size_pdf, note_code, note_coeff, note_semester, note_date_c, note_date_m, note_total, average, median, minimum, maximum, variance, deviation) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            global_data = (type_note, type_exam, name_note, name_teacher, name_pdf, link_pdf, size_pdf, note_code, note_coeff, note_semester, note_date_c, note_date_m, note_total, average, median, minimum, maximum, variance, deviation)
             noteuniv_cursor.execute(sql, global_data)
 
             # Send a discord webhook for every mark if not in global
-            send_webbhook(sem, note_code, name_ens, name_devoir, type_note, type_epreuve, note_date, moy)
+            send_webbhook(sem, note_code, name_teacher, name_note, type_note, type_exam, note_date_c, average)
 
         # Test if table exists
         sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "') AND (TABLE_NAME = '" + name_pdf + "')"
         noteuniv_cursor.execute(sql)
         if list(noteuniv_cursor.fetchall()[0])[0] == 0:
             if verbose:
-                print("Adding table '" + name_devoir + "'.")
-            noteuniv_cursor.execute("CREATE TABLE IF NOT EXISTS `" + name_pdf + "` (`id_etu` int(8) NOT NULL,`note_etu` float NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;")
+                print("Adding table '" + name_note + "'.")
+            noteuniv_cursor.execute("CREATE TABLE IF NOT EXISTS `" + name_pdf + "` (`id_etu` int NOT NULL,`note_etu` float NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;")
             sql_data = []
             for id_etu, note_etu in dict_etu_note:
                 sql_data.append((id_etu, note_etu))
@@ -278,7 +293,7 @@ def process_pdfs(sem_name, sem):
             noteuniv_cursor.executemany(sql, sql_data)
         else:
             if verbose:
-                print("'" + name_devoir + "' already exists.")
+                print("'" + name_note + "' already exists.")
 
 def update_ranking():
     # Check if global table exists
@@ -288,7 +303,7 @@ def update_ranking():
         # Create table shema
         if verbose:
             print("Creating ranking_" + sem + " database.")
-        sql = "CREATE TABLE IF NOT EXISTS `ranking_" + sem + "` (`id_etu` int(8) NOT NULL,`moy_etu` float NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
+        sql = "CREATE TABLE IF NOT EXISTS `ranking_" + sem + "` (`id_etu` int NOT NULL,`moy_etu` float NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
         noteuniv_cursor.execute(sql)
     else:
         # Clear all table
@@ -304,7 +319,7 @@ def update_ranking():
     noteuniv_cursor.execute(sql)
     sql_data = []
     for id_etu in noteuniv_cursor.fetchall():
-        sql = "SELECT `name_pdf`, `mini`, `note_coeff`, `type_note` FROM `global_" + sem + "`"
+        sql = "SELECT `name_pdf`, `note_coeff`, `type_note` FROM `global_" + sem + "`"
         noteuniv_cursor.execute(sql)
         all_notes = []
         all_coeff = []
@@ -314,8 +329,8 @@ def update_ranking():
             noteuniv_cursor.execute(sql)
             note_etu_mark = noteuniv_cursor.fetchall()
             # Insert notes and coeffs to lists
-            if list(note_etu_mark[0])[0] < 21 and any([x in note_data[3] for x in ["Note unique", "Moyenne de notes"]]):
-                note_etu_mark_coeff = note_data[2]
+            if list(note_etu_mark[0])[0] < 21 and any([x in note_data[2] for x in ["Note unique", "Moyenne de notes"]]):
+                note_etu_mark_coeff = note_data[1]
                 note_etu_mark_final = note_etu_mark[0] * note_etu_mark_coeff
                 all_notes.append(note_etu_mark_final)
                 all_coeff.append(note_etu_mark_coeff)
@@ -336,16 +351,16 @@ if __name__ == "__main__":
         unzip_archives(sem_name)
         handle_db(sem_name, sem)
         # Continue if nothing to update (avoid useless requests)
-        if rows_complete and tables_complete:
-            print("Nothing more to add, tables and global are not updated.")
+        if rows_complete and tables_complete and not list_pdf_changed:
+            if verbose:
+                print("Nothing more to add, tables and global will not be updated.")
             continue
-        process_pdfs(sem_name, sem)
-        if not tables_complete:
+        else:
+            process_pdfs(sem_name, sem, sem_token)
             if verbose:
                 print("Updating ranking...")
             update_ranking()
-        # Commit changes (push)
-        db_noteuniv.commit()
-        db_noteuniv.close()
-    if verbose:
-        print("Everything has been successfully updated!")
+            # Commit changes (push)
+            db_noteuniv.commit()
+            db_noteuniv.close()
+            print("Everything has been successfully updated!")
