@@ -8,6 +8,7 @@ import os, json, time, requests, zipfile, io, dotenv, statistics, mysql.connecto
 dotenv.load_dotenv('.env')
 
 verbose = True
+list_pdf_changed = []
 
 env_tokens = {key: value for key, value in os.environ.items() if "MARKS_S" in key}
 host = os.environ.get("BDD_HOST")
@@ -71,12 +72,12 @@ def convert_pdf_to_list(path):
     return text.split("\n")
 
 def handle_db(sem_name, sem):
-    global db_noteuniv, noteuniv_cursor, records_global, rows_complete, tables_complete, list_pdf_changed
+    global db_noteuniv, noteuniv_cursor, records_global, rows_complete, tables_complete
     # Create main database if not exists
     db_noteuniv1 = mysql.connector.connect(host=host, user=login, passwd=passwd)
     noteuniv_cursor1 = db_noteuniv1.cursor()
     if verbose:
-        print("Creating database if not exists.")
+        print("Creating database " + bdd_name + " if not exists.")
     noteuniv_cursor1.execute("CREATE DATABASE IF NOT EXISTS `" + bdd_name + "`")
     db_noteuniv1.commit()
     db_noteuniv1.close()
@@ -112,12 +113,6 @@ def handle_db(sem_name, sem):
         all_tables = [x[0] for x in noteuniv_cursor.fetchall()]
         if all([to_name(x) in all_tables for x in os.listdir(sem_name)]):
             tables_complete = True
-
-        # Check if any PDF changed
-        list_pdf_changed = []
-        for x in os.listdir(sem_name):
-            if os.stat(sem_name + "/" + x).st_size != dict(records_global)[to_name(x)]:
-                list_pdf_changed.append(to_name(x))
 
 def send_webbhook(sem, note_code, name_teacher, name_note, type_note, type_exam, note_date_c, average):
     # JSON webhook for discord message
@@ -181,9 +176,9 @@ def send_webbhook(sem, note_code, name_teacher, name_note, type_note, type_exam,
         requests.post(webhook_url_2, json=webhook_data)
 
 def process_pdfs(sem_name, sem, sem_token):
-    global db_noteuniv, noteuniv_cursor, name_pdf
+    global db_noteuniv, noteuniv_cursor, name_pdf, list_pdf_changed
     # Loop PDF files
-    for filename in [x for x in os.listdir(sem_name) if x.startswith("20")]: # Exclude other formats
+    for filename in [x for x in os.listdir(sem_name) if x.startswith("20")]:  # Exclude other formats
         # Get all data from PDF (list)
         list_el = convert_pdf_to_list(sem_name + "/" + filename)
 
@@ -264,6 +259,9 @@ def process_pdfs(sem_name, sem, sem_token):
         if name_pdf in [x[0] for x in records_global]:
             if verbose:
                 print("'" + name_note + "' already in global.")
+            # Check if this PDF changed
+            if os.stat(sem_name + "/" + filename).st_size != dict(records_global)[to_name(filename)]:
+                list_pdf_changed.append(to_name(filename))
             if name_pdf in list_pdf_changed:
                 print("'" + name_note + "' needs to be updated for new marks.")
                 sql = "UPDATE global_s1 SET size_pdf = %s, note_date_m = %s, note_total = %s, average = %s, median = %s, minimum = %s, maximum = %s, variance = %s, deviation = %s WHERE name_pdf = %s"
@@ -302,13 +300,13 @@ def update_ranking():
     if list(noteuniv_cursor.fetchall()[0])[0] == 0:
         # Create table shema
         if verbose:
-            print("Creating ranking_" + sem + " database.")
+            print("Creating ranking_" + sem + " table.")
         sql = "CREATE TABLE IF NOT EXISTS `ranking_" + sem + "` (`id_etu` int NOT NULL,`moy_etu` float NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
         noteuniv_cursor.execute(sql)
     else:
         # Clear all table
         if verbose:
-            print("Cleaning up ranking_" + sem + " database.")
+            print("Cleaning up ranking_" + sem + " table.")
         sql = "TRUNCATE TABLE `ranking_" + sem + "`"
         noteuniv_cursor.execute(sql)
     if is_empty:
