@@ -2,7 +2,7 @@ from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
-import os, json, time, requests, zipfile, io, dotenv, statistics, mysql.connector
+import os, shutil, json, time, requests, zipfile, io, dotenv, statistics, mysql.connector
 
 # Load tokens + auth for mysql
 dotenv.load_dotenv('.env')
@@ -25,7 +25,7 @@ with open("subjects_coeff.json", "r", encoding="utf-8") as file:
 def to_name(thing):
     return thing.split("/")[-1].split(".pdf")[0].replace(" ", "_")[:64]
 
-def download_archives(sem_name, sem_token):
+def download_archive(sem_name, sem_token):
     # Get download token with classic token
     r = requests.get("https://seafile.unistra.fr/api/v2.1/share-link-zip-task/?share_link_token=" + sem_token + "&path=/")
     if r.ok:
@@ -38,7 +38,7 @@ def download_archives(sem_name, sem_token):
         for chunk in r:
             file.write(chunk)
 
-def unzip_archives(sem_name):
+def unzip_archive(sem_name):
     global is_empty
     # Open all zip files and extract them
     with zipfile.ZipFile(sem_name + ".zip", "r") as zip_ref:
@@ -285,6 +285,7 @@ def process_pdfs(sem_name, sem, sem_token):
                 print("Adding table '" + name_note + "'.")
             noteuniv_cursor.execute("CREATE TABLE IF NOT EXISTS `" + name_pdf + "` (`id_etu` int NOT NULL,`note_etu` float NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;")
             sql_data = []
+            # FIXME Update etu marks
             for id_etu, note_etu in dict_etu_note:
                 sql_data.append((id_etu, note_etu))
             sql = "INSERT INTO `" + name_pdf + "` (id_etu, note_etu) VALUES (%s, %s)"
@@ -345,8 +346,8 @@ if __name__ == "__main__":
     for sem_code, sem_token in env_tokens.items():
         sem_name = sem_code.lower()
         sem = sem_name.split("_")[-1]
-        download_archives(sem_name, sem_token)
-        unzip_archives(sem_name)
+        download_archive(sem_name, sem_token)
+        unzip_archive(sem_name)
         handle_db(sem_name, sem)
         # Continue if nothing to update (avoid useless requests)
         if rows_complete and tables_complete and not list_pdf_changed:
@@ -362,3 +363,5 @@ if __name__ == "__main__":
             db_noteuniv.commit()
             db_noteuniv.close()
             print("Everything has been successfully updated!")
+        # Delete old folders to remove fail marks
+        shutil.rmtree(sem_name, ignore_errors=True)
