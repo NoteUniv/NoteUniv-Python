@@ -9,6 +9,7 @@ dotenv.load_dotenv('.env')
 
 verbose = True
 list_pdf_changed = []
+is_empty = False
 
 env_tokens = {key: value for key, value in os.environ.items() if "MARKS_S" in key}
 host = os.environ.get("BDD_HOST")
@@ -39,7 +40,6 @@ def download_archive(sem_name, sem_token):
             file.write(chunk)
 
 def unzip_archive(sem_name):
-    global is_empty
     # Open all zip files and extract them
     with zipfile.ZipFile(sem_name + ".zip", "r") as zip_ref:
         for zip_file in zip_ref.infolist():
@@ -104,14 +104,14 @@ def handle_db(sem_name, sem):
         records_global = noteuniv_cursor.fetchall()
 
         # Check if rows in global == pdf count
-        if len(records_global) == len(os.listdir(sem_name)):
+        if len(records_global) == len([x for x in os.listdir(sem_name) if x.startswith("20")]):
             rows_complete = True
 
         # Check if all PDFs are in all tables
         sql = "SELECT `TABLE_NAME` FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "')"
         noteuniv_cursor.execute(sql)
         all_tables = [x[0] for x in noteuniv_cursor.fetchall()]
-        if all([to_name(x) in all_tables for x in os.listdir(sem_name)]):
+        if all([to_name(x) in all_tables for x in os.listdir(sem_name) if to_name(x).startswith("20")]):
             tables_complete = True
 
 def send_webbhook(sem, note_code, name_teacher, name_note, type_note, type_exam, note_date_c, average):
