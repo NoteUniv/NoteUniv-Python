@@ -5,11 +5,15 @@ from pdfminer.pdfpage import PDFPage
 import os, shutil, json, time, requests, zipfile, io, dotenv, statistics, mysql.connector
 
 # Load tokens + auth for mysql
-dotenv.load_dotenv('.env')
+dotenv.load_dotenv(".env")
 
-verbose = True
-list_pdf_changed = []
-is_empty = False
+verbose = True # Print debug infos
+records_global = [] # List of all PDF name and size
+name_pdf = "" # Global for latest processed file for ranking
+list_pdf_changed = [] # Which PDF has been chaged since last update
+rows_complete = False # Is global table complete
+tables_complete = False # Is database tables complete
+is_empty = False # Semester folder empty
 
 env_tokens = {key: value for key, value in os.environ.items() if "MARKS_S" in key}
 host = os.environ.get("BDD_HOST")
@@ -18,6 +22,9 @@ passwd = os.environ.get("BDD_PASSWD")
 bdd_name = "c1287446_main"
 webhook_url_1 = os.environ.get("WEBHOOK_URL_1")
 webhook_url_2 = os.environ.get("WEBHOOK_URL_2")
+
+db_noteuniv = mysql.connector.connect(user=login, password=passwd, host=host, database=bdd_name)
+noteuniv_cursor = db_noteuniv.cursor()
 
 # Load subjects + coeffs
 with open("subjects_coeff.json", "r", encoding="utf-8") as file:
@@ -43,11 +50,10 @@ def unzip_archive(sem_name):
     # Open all zip files and extract them
     with zipfile.ZipFile(sem_name + ".zip", "r") as zip_ref:
         for zip_file in zip_ref.infolist():
-            if zip_file.filename[-1] == '/':
+            if zip_file.filename[-1] == "/":
                 continue
             zip_file.filename = os.path.basename(zip_file.filename)
             zip_ref.extract(zip_file, sem_name)
-    is_empty = False
     if not os.path.exists(sem_name):
         os.makedirs(sem_name)
         is_empty = True
@@ -83,20 +89,15 @@ def handle_db(sem_name, sem):
     db_noteuniv1.close()
 
     # Login to this database directly
-    db_noteuniv = mysql.connector.connect(user=login, password=passwd, host=host, database=bdd_name)
-    noteuniv_cursor = db_noteuniv.cursor()
     # Check if global table exists
     sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "') AND (TABLE_NAME = 'global_" + sem + "')"
     noteuniv_cursor.execute(sql)
-    rows_complete = False
-    tables_complete = False
     if list(noteuniv_cursor.fetchall()[0])[0] == 0:
         # Create table shema
         if verbose:
             print("Creating global_" + sem + " table.")
         sql = "CREATE TABLE IF NOT EXISTS `global_" + sem + "` (`id` int NOT NULL KEY AUTO_INCREMENT,`type_note` varchar(255) NOT NULL,`type_exam` varchar(255) NOT NULL,`name_note` varchar(255) NOT NULL,`name_teacher` varchar(255) NOT NULL,`name_pdf` varchar(255) NOT NULL,`link_pdf` varchar(255) NOT NULL,`size_pdf` int NOT NULL,`note_code` varchar(63) NOT NULL,`note_semester` varchar(63) NOT NULL,`note_date_c` date NOT NULL,`note_date_m` timestamp NOT NULL,`note_coeff` tinyint NOT NULL,`note_total` tinyint NOT NULL,`average` double NOT NULL,`median` double NOT NULL,`minimum` double NOT NULL,`maximum` double NOT NULL,`variance` double NOT NULL,`deviation` double NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
         noteuniv_cursor.execute(sql)
-        records_global = []
     else:
         # Select all data from global table
         sql = "SELECT `name_pdf`, `size_pdf` FROM `global_" + sem + "`"
@@ -361,7 +362,7 @@ if __name__ == "__main__":
             update_ranking()
             # Commit changes (push)
             db_noteuniv.commit()
-            db_noteuniv.close()
             print("Everything has been successfully updated!")
         # Delete old folders to remove fail marks
         shutil.rmtree(sem_name, ignore_errors=True)
+    db_noteuniv.close()
