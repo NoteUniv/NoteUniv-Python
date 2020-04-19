@@ -23,15 +23,12 @@ bdd_name = "c1287446_main"
 webhook_url_1 = os.environ.get("WEBHOOK_URL_1")
 webhook_url_2 = os.environ.get("WEBHOOK_URL_2")
 
-db_noteuniv = mysql.connector.connect(user=login, password=passwd, host=host, database=bdd_name)
-noteuniv_cursor = db_noteuniv.cursor()
-
 # Load subjects + coeffs
 with open("subjects_coeff.json", "r", encoding="utf-8") as file:
     subjects = json.load(file)
 
 def to_name(thing):
-    return thing.split("/")[-1].split(".pdf")[0].replace(" ", "_")[:64]
+    return thing.split("/")[-1].split(".pdf")[0].replace(" ", "_")[:64].lower()
 
 def download_archive(sem_name, sem_token):
     # Get download token with classic token
@@ -40,6 +37,8 @@ def download_archive(sem_name, sem_token):
         token_pdf = r.json()["zip_token"]
 
     # Get marks using download token_pdf (cooldown to prepare file zipping)
+    if verbose:
+        print("Downloading semester: " + sem_name + ".")
     r = requests.get("https://seafile.unistra.fr/seafhttp/zip/" + token_pdf, time.sleep(2))
     # Download as stream (works better)
     with open(sem_name + ".zip", "wb") as file:
@@ -78,17 +77,7 @@ def convert_pdf_to_list(path):
     return text.split("\n")
 
 def handle_db(sem_name, sem):
-    global db_noteuniv, noteuniv_cursor, records_global, rows_complete, tables_complete
-    # Create main database if not exists
-    db_noteuniv1 = mysql.connector.connect(host=host, user=login, passwd=passwd)
-    noteuniv_cursor1 = db_noteuniv1.cursor()
-    if verbose:
-        print("Creating database " + bdd_name + " if not exists.")
-    noteuniv_cursor1.execute("CREATE DATABASE IF NOT EXISTS `" + bdd_name + "`")
-    db_noteuniv1.commit()
-    db_noteuniv1.close()
-
-    # Login to this database directly
+    global records_global, rows_complete, tables_complete
     # Check if global table exists
     sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "') AND (TABLE_NAME = 'global_" + sem + "')"
     noteuniv_cursor.execute(sql)
@@ -112,7 +101,7 @@ def handle_db(sem_name, sem):
         sql = "SELECT `TABLE_NAME` FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "')"
         noteuniv_cursor.execute(sql)
         all_tables = [x[0] for x in noteuniv_cursor.fetchall()]
-        if all([to_name(x) in all_tables for x in os.listdir(sem_name) if to_name(x).startswith("20")]):
+        if all([to_name(x) in [to_name(y) for y in all_tables] for x in os.listdir(sem_name) if to_name(x).startswith("20")]):
             tables_complete = True
 
 def send_webbhook(sem, note_code, name_teacher, name_note, type_note, type_exam, note_date_c, average):
@@ -177,7 +166,7 @@ def send_webbhook(sem, note_code, name_teacher, name_note, type_note, type_exam,
         requests.post(webhook_url_2, json=webhook_data)
 
 def process_pdfs(sem_name, sem, sem_token):
-    global db_noteuniv, noteuniv_cursor, name_pdf, list_pdf_changed
+    global name_pdf, list_pdf_changed
     # Loop PDF files
     for filename in [x for x in os.listdir(sem_name) if x.startswith("20")]:  # Exclude other formats
         # Get all data from PDF (list)
@@ -190,9 +179,9 @@ def process_pdfs(sem_name, sem, sem_token):
         msg_type_note = [x for x in list_el if "type de note" in x.lower()][0]
         type_note = list_el[list_el.index(msg_type_note) + 1]
         msg_type_exam = [x for x in list_el if "type d'épreuve" in x.lower()][0]
-        type_exam = list_el[list_el.index(msg_type_exam) + 1]
-        msg_nom_devoir = [x for x in list_el if "nom du devoir" in x.lower()][0]
-        name_note = list_el[list_el.index(msg_nom_devoir) + 1]
+        type_exam = list_el[list_el.index(msg_type_exam) + 2]
+        msg_nom_note = [x for x in list_el if "nom du devoir" in x.lower()][0]
+        name_note = list_el[list_el.index(msg_nom_note) + 2]
         msg_name_teacher = [x for x in list_el if "enseignant" in x.lower()][0]
         name_teacher = list_el[list_el.index(msg_name_teacher) + 1]
 
@@ -212,7 +201,7 @@ def process_pdfs(sem_name, sem, sem_token):
                 for y in name_pdf.split("_"):
                     if y.lower() == x.lower():
                         note_code = y
-                        note_coeff = subjects[sem][main_key][y]
+                        note_coeff = subjects[sem][main_key][y.upper()]
                         note_semester = main_key
                         break
 
@@ -335,14 +324,37 @@ def update_ranking():
                 all_notes.append(note_etu_mark_final)
                 all_coeff.append(note_etu_mark_coeff)
 
+        # If empty marks or doesn't count, break
+        if not all_coeff:
+            break
+
         # Weighted average on all marks for etu
-        moy_etu = sum([sum(x) for x in all_notes]) / sum(all_coeff)
+        sum_note_coeff = []
+        for tuple_note in all_notes:
+            sum_note_coeff.append(tuple_note[0])
+        # moy_etu = sum([sum(x) for x in all_notes]) / sum(all_coeff)
+        moy_etu = sum(sum_note_coeff) / len(all_coeff)
         # Insert average for each etu
         sql_data.append((id_etu[0], round(moy_etu, 2)))
+
     sql = "INSERT INTO `ranking_" + sem + "` (id_etu, moy_etu) VALUES (%s, %s)"
-    noteuniv_cursor.executemany(sql, sql_data)
+    if all_coeff:
+        noteuniv_cursor.executemany(sql, sql_data)
 
 if __name__ == "__main__":
+    # Create main database if not exists
+    db_noteuniv1 = mysql.connector.connect(host=host, user=login, passwd=passwd)
+    noteuniv_cursor1 = db_noteuniv1.cursor()
+    if verbose:
+        print("Creating database " + bdd_name + " if not exists.")
+    noteuniv_cursor1.execute("CREATE DATABASE IF NOT EXISTS `" + bdd_name + "`")
+    db_noteuniv1.commit()
+    db_noteuniv1.close()
+
+    # Login to this database directly
+    db_noteuniv = mysql.connector.connect(user=login, password=passwd, host=host, database=bdd_name)
+    noteuniv_cursor = db_noteuniv.cursor()
+
     # Start main function and then process PDFs + DB push
     for sem_code, sem_token in env_tokens.items():
         sem_name = sem_code.lower()
@@ -354,7 +366,6 @@ if __name__ == "__main__":
         if rows_complete and tables_complete and not list_pdf_changed:
             if verbose:
                 print("Nothing more to add, tables and global will not be updated.")
-            continue
         else:
             process_pdfs(sem_name, sem, sem_token)
             if verbose:
@@ -365,4 +376,5 @@ if __name__ == "__main__":
             print("Everything has been successfully updated!")
         # Delete old folders to remove fail marks
         shutil.rmtree(sem_name, ignore_errors=True)
+        continue
     db_noteuniv.close()
