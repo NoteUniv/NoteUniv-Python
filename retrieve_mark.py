@@ -161,9 +161,10 @@ def send_webbhook(sem, note_code, name_teacher, name_note, type_note, type_exam,
 
     # Send a webhook in the correct channel for every MMI
     if sem == "s1" or sem == "s2":
-        requests.post(webhook_url_1, json=webhook_data)
+        r = requests.post(webhook_url_1, json=webhook_data)
     elif sem == "s3" or sem == "s4":
-        requests.post(webhook_url_2, json=webhook_data)
+        r = requests.post(webhook_url_2, json=webhook_data)
+    print(r.content)
 
 def process_pdfs(sem_name, sem, sem_token):
     global name_pdf, list_pdf_changed
@@ -348,15 +349,15 @@ if __name__ == "__main__":
     if verbose:
         print("Creating database " + bdd_name + " if not exists.")
     noteuniv_cursor1.execute("CREATE DATABASE IF NOT EXISTS `" + bdd_name + "`")
+    noteuniv_cursor1.close()
     db_noteuniv1.commit()
     db_noteuniv1.close()
 
-    # Login to this database directly
-    db_noteuniv = mysql.connector.connect(user=login, password=passwd, host=host, database=bdd_name)
-    noteuniv_cursor = db_noteuniv.cursor()
-
     # Start main function and then process PDFs + DB push
     for sem_code, sem_token in env_tokens.items():
+        # Login to this database directly (every semester for connection lost)
+        db_noteuniv = mysql.connector.connect(user=login, password=passwd, host=host, database=bdd_name)
+        noteuniv_cursor = db_noteuniv.cursor()
         sem_name = sem_code.lower()
         sem = sem_name.split("_")[-1]
         download_archive(sem_name, sem_token)
@@ -376,5 +377,5 @@ if __name__ == "__main__":
             print("Everything has been successfully updated!")
         # Delete old folders to remove fail marks
         shutil.rmtree(sem_name, ignore_errors=True)
-        continue
-    db_noteuniv.close()
+        noteuniv_cursor.close()
+        db_noteuniv.close()

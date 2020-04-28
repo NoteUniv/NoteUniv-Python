@@ -85,7 +85,8 @@
             "ECO4": 2,
             "ESP4": 1,
             "GRAPH4": 2,
-            "MEDIA4": 1
+            "MEDIA4": 1,
+            "PTPMU4": 2
         },
         "UE2": {
             "3D_4": 2,
