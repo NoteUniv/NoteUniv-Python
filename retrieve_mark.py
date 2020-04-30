@@ -355,13 +355,13 @@ if __name__ == "__main__":
 
     # Start main function and then process PDFs + DB push
     for sem_code, sem_token in env_tokens.items():
-        # Login to this database directly (every semester for connection lost)
-        db_noteuniv = mysql.connector.connect(user=login, password=passwd, host=host, database=bdd_name)
-        noteuniv_cursor = db_noteuniv.cursor()
         sem_name = sem_code.lower()
         sem = sem_name.split("_")[-1]
         download_archive(sem_name, sem_token)
         unzip_archive(sem_name)
+        # Login to this database directly (every semester for connection lost)
+        db_noteuniv = mysql.connector.connect(user=login, password=passwd, host=host, database=bdd_name)
+        noteuniv_cursor = db_noteuniv.cursor()
         handle_db(sem_name, sem)
         # Continue if nothing to update (avoid useless requests)
         if rows_complete and tables_complete and not list_pdf_changed:
