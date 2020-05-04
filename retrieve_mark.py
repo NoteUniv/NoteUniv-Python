@@ -327,7 +327,7 @@ def update_ranking():
 
         # If empty marks or doesn't count, break
         if not all_coeff:
-            break
+            continue
 
         # Weighted average on all marks for etu
         sum_note_coeff = []
