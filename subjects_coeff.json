@@ -89,14 +89,20 @@
             "PTPMU4": 2
         },
         "UE2": {
+            "3D": 2,
+            "3D4": 2,
             "3D_4": 2,
+            "ANIM": 2,
             "ANIM4": 2,
             "AV4": 2,
+            "BOOK": 2,
             "BOOK4": 2,
             "CREA4": 2,
+            "GAME": 2,
             "GAME4": 2,
             "INFO4": 2,
             "SCI4": 2,
+            "SINFO": 2,
             "SINFO4": 2,
             "WEB4": 2
         }
