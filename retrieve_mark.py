@@ -81,6 +81,8 @@ def handle_db(sem_name, sem):
     # Check if global table exists
     sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "') AND (TABLE_NAME = 'global_" + sem + "')"
     noteuniv_cursor.execute(sql)
+    rows_complete = False
+    tables_complete = False
     if list(noteuniv_cursor.fetchall()[0])[0] == 0:
         # Create table shema
         if verbose:
@@ -276,7 +278,6 @@ def process_pdfs(sem_name, sem, sem_token):
                 print("Adding table '" + name_note + "'.")
             noteuniv_cursor.execute("CREATE TABLE IF NOT EXISTS `" + name_pdf + "` (`id_etu` int NOT NULL,`note_etu` float NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;")
             sql_data = []
-            # FIXME Update etu marks
             for id_etu, note_etu in dict_etu_note:
                 sql_data.append((id_etu, note_etu))
             sql = "INSERT INTO `" + name_pdf + "` (id_etu, note_etu) VALUES (%s, %s)"
