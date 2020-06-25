@@ -96,7 +96,7 @@ def handle_db(sem_name, sem):
         records_global = noteuniv_cursor.fetchall()
 
         # Check if rows in global == pdf count
-        if len(records_global) == len([x for x in os.listdir(sem_name) if x.startswith("20")]):
+        if len(records_global) == len([x for x in os.listdir(sem_name) if x.startswith("20") and x.endswith(".pdf")]):
             rows_complete = True
 
         # Check if all PDFs are in all tables
@@ -163,15 +163,14 @@ def send_webbhook(sem, note_code, name_teacher, name_note, type_note, type_exam,
 
     # Send a webhook in the correct channel for every MMI
     if sem == "s1" or sem == "s2":
-        r = requests.post(webhook_url_1, json=webhook_data)
+        requests.post(webhook_url_1, json=webhook_data)
     elif sem == "s3" or sem == "s4":
-        r = requests.post(webhook_url_2, json=webhook_data)
-    print(r.content)
+        requests.post(webhook_url_2, json=webhook_data)
 
 def process_pdfs(sem_name, sem, sem_token):
     global name_pdf, list_pdf_changed
     # Loop PDF files
-    for filename in [x for x in os.listdir(sem_name) if x.startswith("20")]:  # Exclude other formats
+    for filename in [x for x in os.listdir(sem_name) if x.startswith("20") and x.endswith(".pdf")]:  # Exclude other formats
         # Get all data from PDF (list)
         list_el = convert_pdf_to_list(sem_name + "/" + filename)
 
@@ -184,7 +183,7 @@ def process_pdfs(sem_name, sem, sem_token):
         msg_type_exam = [x for x in list_el if "type d'épreuve" in x.lower()][0]
         type_exam = list_el[list_el.index(msg_type_exam) + 2]
         msg_nom_note = [x for x in list_el if "nom du devoir" in x.lower()][0]
-        name_note = list_el[list_el.index(msg_nom_note) + 2]
+        name_note = list_el[list_el.index(msg_nom_note) + 1]
         msg_name_teacher = [x for x in list_el if "enseignant" in x.lower()][0]
         name_teacher = list_el[list_el.index(msg_name_teacher) + 1]
 
@@ -231,6 +230,9 @@ def process_pdfs(sem_name, sem, sem_token):
         nb_etu = int(list_el[etu_start_index - shift])
         num_etu = list_el[etu_start_index + 1:etu_start_index + nb_etu + 1]
         note_etu = list_el[note_start_index + 1:note_start_index + nb_etu + 1]
+        # If PDF spaces are broken
+        if nb_etu != len(note_etu):
+            note_etu = ["100,000"] * nb_etu
 
         # Calculate many stats from marks
         clear_note_etu = [float(x.replace(",", ".")) for x in note_etu if "," in x]
@@ -314,12 +316,12 @@ def update_ranking():
         noteuniv_cursor.execute(sql)
         all_notes = []
         all_coeff = []
-        # Get all etu notes from all PDFs
+        # Get all etu marks from all PDFs
         for note_data in noteuniv_cursor.fetchall():
-            sql = "SELECT `note_etu` FROM " + str(note_data[0]) + " WHERE id_etu = '" + str(id_etu[0]) + "'"
+            sql = "SELECT `note_etu` FROM " + note_data[0] + " WHERE id_etu = '" + str(id_etu[0]) + "'"
             noteuniv_cursor.execute(sql)
             note_etu_mark = noteuniv_cursor.fetchall()
-            # Insert notes and coeffs to lists
+            # Insert marks and coeffs to lists
             if list(note_etu_mark[0])[0] < 21 and any([x in note_data[2] for x in ["Note unique", "Moyenne de notes"]]):
                 note_etu_mark_coeff = note_data[1]
                 note_etu_mark_final = note_etu_mark[0] * note_etu_mark_coeff
@@ -353,6 +355,15 @@ if __name__ == "__main__":
     noteuniv_cursor1.close()
     db_noteuniv1.commit()
     db_noteuniv1.close()
+
+    # sem = "s4"
+    # name_pdf = "2020_06_15_cazier_sinfo4_tp_note_unique"
+    # db_noteuniv = mysql.connector.connect(user=login, password=passwd, host=host, database=bdd_name)
+    # noteuniv_cursor = db_noteuniv.cursor()
+    # update_ranking()
+    # db_noteuniv.commit()
+    # db_noteuniv.close()
+    # exit()
 
     # Start main function and then process PDFs + DB push
     for sem_code, sem_token in env_tokens.items():
