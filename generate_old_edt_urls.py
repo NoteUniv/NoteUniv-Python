@@ -1,7 +1,9 @@
 import requests, json, re
 
 global_url = "https://monemploidutemps.unistra.fr/api/resource/7863.json/"
-base_url = "https://adewebcons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources={},{}&projectId=10&calType=ical&nbWeeks=100"
+# Change the project id for different year (10 for 2019-2020 / 12 for 2020-2021)
+# https://adewebcons.unistra.fr/jsp/standard/gui/interface.jsp
+base_url = "https://adewebcons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources={},{}&projectId=12&calType=ical&nbWeeks=100"
 json_data_final = {}
 temp_class = None
 

@@ -67,10 +67,10 @@ def convert_pdf_to_list(path):
     converter = TextConverter(manager, output, laparams=LAParams())
     interpreter = PDFPageInterpreter(manager, converter)
 
-    infile = open(path, "rb")
-    for page in PDFPage.get_pages(infile, {0}):
+    file = open(path, "rb")
+    for page in PDFPage.get_pages(file, {0}):
         interpreter.process_page(page)
-    infile.close()
+    file.close()
     converter.close()
     text = output.getvalue()
     output.close()
@@ -84,7 +84,7 @@ def handle_db(sem_name, sem):
     rows_complete = False
     tables_complete = False
     if list(noteuniv_cursor.fetchall()[0])[0] == 0:
-        # Create table shema
+        # Create table schema
         if verbose:
             print("Creating global_" + sem + " table.")
         sql = "CREATE TABLE IF NOT EXISTS `global_" + sem + "` (`id` int NOT NULL KEY AUTO_INCREMENT,`type_note` varchar(255) NOT NULL,`type_exam` varchar(255) NOT NULL,`name_note` varchar(255) NOT NULL,`name_teacher` varchar(255) NOT NULL,`name_pdf` varchar(255) NOT NULL,`link_pdf` varchar(255) NOT NULL,`size_pdf` int NOT NULL,`note_code` varchar(63) NOT NULL,`note_semester` varchar(63) NOT NULL,`note_date_c` date NOT NULL,`note_date_m` timestamp NOT NULL,`note_coeff` tinyint NOT NULL,`note_total` tinyint NOT NULL,`average` double NOT NULL,`median` double NOT NULL,`minimum` double NOT NULL,`maximum` double NOT NULL,`variance` double NOT NULL,`deviation` double NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
@@ -115,7 +115,7 @@ def send_webbhook(sem, note_code, name_teacher, name_note, type_note, type_exam,
             {
                 "title": f"Nouvelle note de {note_code} sur NoteUniv !",
                 "description": "Une nouvelle note a été publiée il y a peu, allez la voir sur le site web !",
-                "url": "https://noteuniv.fr/",
+                "url": "https://noteuniv.fr",
                 "color": 1114419,
                 "thumbnail": {
                     "url": "https://noteuniv.fr/assets/images/logo_rounded.png"
@@ -293,7 +293,7 @@ def update_ranking():
     sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "') AND (TABLE_NAME = 'ranking_" + sem + "')"
     noteuniv_cursor.execute(sql)
     if list(noteuniv_cursor.fetchall()[0])[0] == 0:
-        # Create table shema
+        # Create table schema
         if verbose:
             print("Creating ranking_" + sem + " table.")
         sql = "CREATE TABLE IF NOT EXISTS `ranking_" + sem + "` (`id_etu` int NOT NULL,`moy_etu` float NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
@@ -357,7 +357,7 @@ if __name__ == "__main__":
     db_noteuniv1.close()
 
     # sem = "s4"
-    # name_pdf = "2020_06_15_cazier_sinfo4_tp_note_unique"
+    # name_pdf = ""
     # db_noteuniv = mysql.connector.connect(user=login, password=passwd, host=host, database=bdd_name)
     # noteuniv_cursor = db_noteuniv.cursor()
     # update_ranking()
