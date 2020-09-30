@@ -23,7 +23,7 @@ bdd_name = "c1287446_main"
 webhook_url_1 = os.environ.get("WEBHOOK_URL_1")
 webhook_url_2 = os.environ.get("WEBHOOK_URL_2")
 
-# Load subjects + coeffs
+# Load subjects + coefficients
 with open("subjects_coeff.json", "r", encoding="utf-8") as file:
     subjects = json.load(file)
 
@@ -99,7 +99,7 @@ def handle_db(sem_name, sem):
         if len(records_global) == len([x for x in os.listdir(sem_name) if x.startswith("20") and x.endswith(".pdf")]):
             rows_complete = True
 
-        # Check if all PDFs are in all tables
+        # Check if all PDF are in all tables
         sql = "SELECT `TABLE_NAME` FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "')"
         noteuniv_cursor.execute(sql)
         all_tables = [x[0] for x in noteuniv_cursor.fetchall()]
@@ -167,7 +167,7 @@ def send_webbhook(sem, note_code, name_teacher, name_note, type_note, type_exam,
     elif sem == "s3" or sem == "s4":
         requests.post(webhook_url_2, json=webhook_data)
 
-def process_pdfs(sem_name, sem, sem_token):
+def process_pdf(sem_name, sem, sem_token):
     global name_pdf, list_pdf_changed
     # Loop PDF files
     for filename in [x for x in os.listdir(sem_name) if x.startswith("20") and x.endswith(".pdf")]:  # Exclude other formats
@@ -316,12 +316,12 @@ def update_ranking():
         noteuniv_cursor.execute(sql)
         all_notes = []
         all_coeff = []
-        # Get all etu marks from all PDFs
+        # Get all etu marks from all PDF
         for note_data in noteuniv_cursor.fetchall():
             sql = "SELECT `note_etu` FROM " + note_data[0] + " WHERE id_etu = '" + str(id_etu[0]) + "'"
             noteuniv_cursor.execute(sql)
             note_etu_mark = noteuniv_cursor.fetchall()
-            # Insert marks and coeffs to lists
+            # Insert marks and coefficients to lists
             if list(note_etu_mark[0])[0] < 21 and any([x in note_data[2] for x in ["Note unique", "Moyenne de notes"]]):
                 note_etu_mark_coeff = note_data[1]
                 note_etu_mark_final = note_etu_mark[0] * note_etu_mark_coeff
@@ -365,7 +365,7 @@ if __name__ == "__main__":
     # db_noteuniv.close()
     # exit()
 
-    # Start main function and then process PDFs + DB push
+    # Start main function and then process PDF + DB push
     for sem_code, sem_token in env_tokens.items():
         sem_name = sem_code.lower()
         sem = sem_name.split("_")[-1]
@@ -380,7 +380,7 @@ if __name__ == "__main__":
             if verbose:
                 print("Nothing more to add, tables and global will not be updated.")
         else:
-            process_pdfs(sem_name, sem, sem_token)
+            process_pdf(sem_name, sem, sem_token)
             if verbose:
                 print("Updating ranking...")
             update_ranking()
