@@ -358,15 +358,6 @@ if __name__ == "__main__":
     db_noteuniv1.commit()
     db_noteuniv1.close()
 
-    # sem = "s4"
-    # name_pdf = ""
-    # db_noteuniv = mysql.connector.connect(user=login, password=passwd, host=host, database=bdd_name)
-    # noteuniv_cursor = db_noteuniv.cursor()
-    # update_ranking()
-    # db_noteuniv.commit()
-    # db_noteuniv.close()
-    # exit()
-
     # Start main function and then process PDF + DB push
     for sem_code, sem_token in env_tokens.items():
         sem_name = sem_code.lower()
