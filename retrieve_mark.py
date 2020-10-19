@@ -17,9 +17,9 @@ is_empty = False # Semester folder empty
 
 env_tokens = {key: value for key, value in os.environ.items() if "MARKS_S" in key}
 host = os.environ.get("BDD_HOST")
+bdd_name = os.environ.get("BDD_NAME")
 login = os.environ.get("BDD_LOGIN")
 passwd = os.environ.get("BDD_PASSWD")
-bdd_name = "c1287446_main"
 webhook_url_1 = os.environ.get("WEBHOOK_URL_1")
 webhook_url_2 = os.environ.get("WEBHOOK_URL_2")
 
@@ -184,6 +184,8 @@ def process_pdf(sem_name, sem, sem_token):
         type_exam = list_el[list_el.index(msg_type_exam) + 2]
         msg_nom_note = [x for x in list_el if "nom du devoir" in x.lower()][0]
         name_note = list_el[list_el.index(msg_nom_note) + 1]
+        if not name_note:
+            name_note = list_el[list_el.index(msg_nom_note) + 2]
         msg_name_teacher = [x for x in list_el if "enseignant" in x.lower()][0]
         name_teacher = list_el[list_el.index(msg_name_teacher) + 1]
 
@@ -212,7 +214,7 @@ def process_pdf(sem_name, sem, sem_token):
             list_el = [x for x in list_el if x != ""]
             shift = 1
         else:
-            # Blank is useless if PDF contains
+            # Blank is useless in PDF
             if any([x.lower() in ["abi", "abs"] for x in list_el]):
                 list_el = [x for x in list_el if x != ""]
                 shift = 1
