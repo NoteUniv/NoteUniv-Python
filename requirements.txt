@@ -1,0 +1,6 @@
+requests
+pdfminer
+shutil
+python.dotenv
+statistics
+mysql.connector
