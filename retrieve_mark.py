@@ -31,16 +31,25 @@ def to_name(thing):
     return thing.split("/")[-1].split(".pdf")[0].replace(" ", "_")[:64].lower()
 
 def download_archive(sem_name, sem_token):
-    # Get download token with classic token
+    # Get download token with global token
     r = requests.get("https://seafile.unistra.fr/api/v2.1/share-link-zip-task/?share_link_token=" + sem_token + "&path=/")
     if r.ok:
         token_pdf = r.json()["zip_token"]
+    else:
+        exit()
 
-    # Get marks using download token_pdf (cooldown to prepare file zipping)
-    if verbose:
-        print("Downloading semester: " + sem_name + ".")
-    r = requests.get("https://seafile.unistra.fr/seafhttp/zip/" + token_pdf, time.sleep(2))
-    # Download as stream (works better)
+    # Send a query to compress PDFs
+    while True:
+        r = requests.get("https://seafile.unistra.fr/api/v2.1/query-zip-progress/?token=" + token_pdf)
+        # Request returns a JSON with number of zipped files and total files
+        if r.json()["zipped"] != r.json()["total"]:
+            # print("Not fully zipped yet")
+            time.sleep(2)
+        else:
+            break
+
+    r = requests.get("https://seafile.unistra.fr/seafhttp/zip/" + token_pdf)
+    # Download as stream and write bytes (works better)
     with open(sem_name + ".zip", "wb") as file:
         for chunk in r:
             file.write(chunk)
