@@ -38,7 +38,7 @@ def download_archive(sem_name, sem_token):
     else:
         exit()
 
-    # Send a query to compress PDFs
+    # Send a query to compress every PDF
     while True:
         r = requests.get("https://seafile.unistra.fr/api/v2.1/query-zip-progress/?token=" + token_pdf)
         # Request returns a JSON with number of zipped files and total files
@@ -55,12 +55,14 @@ def download_archive(sem_name, sem_token):
             file.write(chunk)
 
 def unzip_archive(sem_name):
+    global is_empty
     # Open all zip files and extract them
     with zipfile.ZipFile(sem_name + ".zip", "r") as zip_ref:
         for zip_file in zip_ref.infolist():
+            # If zip file contains a folder
             if zip_file.filename[-1] == "/":
                 continue
-            zip_file.filename = os.path.basename(zip_file.filename)
+            zip_file.filename = os.path.basename(zip_file.filename.encode("cp437").decode("utf8"))
             zip_ref.extract(zip_file, sem_name)
     if not os.path.exists(sem_name):
         os.makedirs(sem_name)
@@ -179,7 +181,7 @@ def send_webbhook(sem, note_code, name_teacher, name_note, type_note, type_exam,
 def process_pdf(sem_name, sem, sem_token):
     global name_pdf, list_pdf_changed
     # Loop PDF files
-    for filename in [x for x in os.listdir(sem_name) if x.startswith("20") and x.endswith(".pdf")]:  # Exclude other formats
+    for filename in [x for x in os.listdir(sem_name) if x.startswith("20") and x.endswith(".pdf")]: # Exclude other formats
         # Get all data from PDF (list)
         list_el = convert_pdf_to_list(sem_name + "/" + filename)
 
@@ -219,18 +221,7 @@ def process_pdf(sem_name, sem, sem_token):
                         break
 
         # Check format of PDF, blank is useless if space in doc
-        if " " in list_el:
-            list_el = [x for x in list_el if x != ""]
-            shift = 1
-        else:
-            # Blank is useless in PDF
-            if any([x.lower() in ["abi", "abs"] for x in list_el]):
-                list_el = [x for x in list_el if x != ""]
-                shift = 1
-            # Blank mean ABS if not abs or abi is not mentionned
-            else:
-                list_el = [x if x != "" else "ABS" for x in list_el]
-                shift = 2
+        list_el = [x for x in list_el if x != ""]
 
         msg_etu_index = [x for x in list_el if "etudiant" in x.lower()][-1]
         etu_start_index = list_el.index(msg_etu_index)
@@ -238,7 +229,7 @@ def process_pdf(sem_name, sem, sem_token):
         note_start_index = list_el.index(msg_note_index)
 
         # Get lists of all num etu and all marks
-        nb_etu = int(list_el[etu_start_index - shift])
+        nb_etu = int(list_el[etu_start_index - 1])
         num_etu = list_el[etu_start_index + 1:etu_start_index + nb_etu + 1]
         note_etu = list_el[note_start_index + 1:note_start_index + nb_etu + 1]
         # If PDF spaces are broken
