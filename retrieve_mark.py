@@ -134,27 +134,27 @@ def send_webbhook(sem, note_code, name_teacher, name_note, type_note, type_exam,
                 "fields": [
                     {
                         "name": "Enseignant :",
-                        "value": name_teacher,
+                        "value": name_teacher if name_teacher != "" else "❌",
                         "inline": True
                     },
                     {
                         "name": "Devoir :",
-                        "value": name_note,
+                        "value": name_note if name_note != "" else "❌",
                         "inline": True
                     },
                     {
                         "name": "Type de note :",
-                        "value": type_note,
+                        "value": type_note if type_note != "" else "❌",
                         "inline": True
                     },
                     {
                         "name": "Type épreuve :",
-                        "value": type_exam,
+                        "value": type_exam if type_exam != "" else "❌",
                         "inline": True
                     },
                     {
                         "name": "Date :",
-                        "value": note_date_c,
+                        "value": note_date_c if note_date_c != "" else "❌",
                         "inline": True
                     },
                     {
