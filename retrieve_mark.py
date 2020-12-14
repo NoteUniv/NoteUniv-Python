@@ -261,7 +261,7 @@ def process_pdf(sem_name, sem, sem_token):
                 list_pdf_changed.append(to_name(filename))
             if name_pdf in list_pdf_changed:
                 print("'" + name_note + "' needs to be updated for new marks.")
-                sql = "UPDATE global_s1 SET size_pdf = %s, note_date_m = %s, note_total = %s, average = %s, median = %s, minimum = %s, maximum = %s, variance = %s, deviation = %s WHERE name_pdf = %s"
+                sql = "UPDATE global_s" + sem + " SET size_pdf = %s, note_date_m = %s, note_total = %s, average = %s, median = %s, minimum = %s, maximum = %s, variance = %s, deviation = %s WHERE name_pdf = %s"
                 sql_data = (size_pdf, note_date_m, note_total, average, median, minimum, maximum, variance, deviation, name_pdf)
                 noteuniv_cursor.execute(sql, sql_data)
         else:
