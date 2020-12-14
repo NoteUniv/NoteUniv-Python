@@ -290,63 +290,6 @@ def process_pdf(sem_name, sem, sem_token):
             if verbose:
                 print("'" + name_note + "' already exists.")
 
-def update_ranking():
-    # Check if global table exists
-    sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "') AND (TABLE_NAME = 'ranking_" + sem + "')"
-    noteuniv_cursor.execute(sql)
-    if list(noteuniv_cursor.fetchall()[0])[0] == 0:
-        # Create table schema
-        if verbose:
-            print("Creating ranking_" + sem + " table.")
-        sql = "CREATE TABLE IF NOT EXISTS `ranking_" + sem + "` (`id_etu` int NOT NULL,`moy_etu` float NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
-        noteuniv_cursor.execute(sql)
-    else:
-        # Clear all table
-        if verbose:
-            print("Cleaning up ranking_" + sem + " table.")
-        sql = "TRUNCATE TABLE `ranking_" + sem + "`"
-        noteuniv_cursor.execute(sql)
-    if is_empty:
-        return
-
-    # Get all id_etu from any PDF file (latest processed)
-    sql = "SELECT `id_etu` FROM `" + name_pdf + "`"
-    noteuniv_cursor.execute(sql)
-    sql_data = []
-    for id_etu in noteuniv_cursor.fetchall():
-        sql = "SELECT `name_pdf`, `note_coeff`, `type_note` FROM `global_" + sem + "`"
-        noteuniv_cursor.execute(sql)
-        all_notes = []
-        all_coeff = []
-        # Get all etu marks from all PDF
-        for note_data in noteuniv_cursor.fetchall():
-            sql = "SELECT `note_etu` FROM " + note_data[0] + " WHERE id_etu = '" + str(id_etu[0]) + "'"
-            noteuniv_cursor.execute(sql)
-            note_etu_mark = noteuniv_cursor.fetchall()
-            # Insert marks and coefficients to lists
-            if list(note_etu_mark[0])[0] < 21 and any([x in note_data[2] for x in ["Note unique", "Moyenne de notes"]]):
-                note_etu_mark_coeff = note_data[1]
-                note_etu_mark_final = note_etu_mark[0] * note_etu_mark_coeff
-                all_notes.append(note_etu_mark_final)
-                all_coeff.append(note_etu_mark_coeff)
-
-        # If empty marks or doesn't count, break
-        if not all_coeff:
-            continue
-
-        # Weighted average on all marks for etu
-        sum_note_coeff = []
-        for tuple_note in all_notes:
-            sum_note_coeff.append(tuple_note[0])
-        # moy_etu = sum([sum(x) for x in all_notes]) / sum(all_coeff)
-        moy_etu = sum(sum_note_coeff) / len(all_coeff)
-        # Insert average for each etu
-        sql_data.append((id_etu[0], round(moy_etu, 2)))
-
-    sql = "INSERT INTO `ranking_" + sem + "` (id_etu, moy_etu) VALUES (%s, %s)"
-    if all_coeff:
-        noteuniv_cursor.executemany(sql, sql_data)
-
 if __name__ == "__main__":
     # Create main database if not exists
     db_noteuniv1 = mysql.connector.connect(host=host, user=login, passwd=passwd)
@@ -374,9 +317,6 @@ if __name__ == "__main__":
                 print("Nothing more to add, tables and global will not be updated.")
         else:
             process_pdf(sem_name, sem, sem_token)
-            if verbose:
-                print("Updating ranking...")
-            update_ranking()
             # Commit changes (push)
             db_noteuniv.commit()
             print("Everything has been successfully updated!")
