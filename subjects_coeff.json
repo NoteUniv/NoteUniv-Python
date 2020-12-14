@@ -57,6 +57,7 @@
             "ALLD3": 1,
             "ALL2": 1,
             "ALL3": 1,
+            "APPRENTISSAGE": 2,
             "ANG3": 2,
             "ART3": 1,
             "COM3": 2,
@@ -71,6 +72,7 @@
         },
         "UE2": {
             "AV3": 2,
+            "APPRENTISSAGE": 2,
             "CREA3": 2,
             "INFO3": 2,
             "PROG3": 2,
