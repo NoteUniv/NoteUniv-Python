@@ -3,6 +3,7 @@ from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 import os, shutil, json, time, requests, zipfile, io, dotenv, statistics, mysql.connector
+from token_cipher import decipher
 
 # Load tokens + auth for mysql
 dotenv.load_dotenv(".env")
@@ -117,7 +118,7 @@ def handle_db(sem_name, sem):
         if all([to_name(x) in [to_name(y) for y in all_tables] for x in os.listdir(sem_name) if to_name(x).startswith("20")]):
             tables_complete = True
 
-def send_webbhook(sem, note_code, name_teacher, name_note, type_note, type_exam, note_date_c, average):
+def send_webhook(sem, note_code, name_teacher, name_note, type_note, type_exam, note_date_c, average):
     # JSON webhook for discord message
     webhook_data = {
         "username": "NoteUniv",
@@ -177,6 +178,26 @@ def send_webbhook(sem, note_code, name_teacher, name_note, type_note, type_exam,
         requests.post(webhook_url_1, json=webhook_data)
     elif sem == "s3" or sem == "s4":
         requests.post(webhook_url_2, json=webhook_data)
+
+def send_notification(sem, note_code, name_teacher, name_note, note_date_c, average):
+    promo = (int(sem[-1]) + 2 - 1) // 2
+    noteuniv_cursor.execute("SELECT token, key_token FROM data_etu WHERE promo = 'MMI" + str(promo) + "'")
+
+    all_tokens = []
+
+    for token, key_token in noteuniv_cursor.fetchall():
+        if token:
+            all_tokens.append(decipher(token, key_token))
+
+    notification_data = {
+        "to": all_tokens,
+        "title": f"🎓 Nouvelle note en {note_code} de {name_teacher}",
+        "body": f"ℹ️ {name_note}\n📅 Date : {note_date_c}\n📈 Moyenne : {round(average, 2)}",
+        "priority": "high"
+    }
+
+    # Send the notification to all students of the promo
+    requests.post("https://exp.host/--/api/v2/push/send", json=notification_data)
 
 def process_pdf(sem_name, sem, sem_token):
     global name_pdf, list_pdf_changed
@@ -271,8 +292,10 @@ def process_pdf(sem_name, sem, sem_token):
             global_data = (type_note, type_exam, name_note, name_teacher, name_pdf, link_pdf, size_pdf, note_code, note_coeff, note_semester, note_date_c, note_date_m, note_total, average, median, minimum, maximum, variance, deviation)
             noteuniv_cursor.execute(sql, global_data)
 
-            # Send a discord webhook for every mark if not in global
-            send_webbhook(sem, note_code, name_teacher, name_note, type_note, type_exam, note_date_c, average)
+            # Send a discord webhook for every mark
+            send_webhook(sem, note_code, name_teacher, name_note, type_note, type_exam, note_date_c, average)
+            # Send a notification on user's device
+            send_notification(sem, note_code, name_teacher, name_note, note_date_c, average)
 
         # Test if table exists
         sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "') AND (TABLE_NAME = '" + name_pdf + "')"
