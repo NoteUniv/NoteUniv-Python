@@ -206,7 +206,7 @@ def process_pdf(sem_name, sem, sem_token):
         # Get all data from PDF (list)
         list_el = convert_pdf_to_list(sem_name + "/" + filename)
 
-        if not "LISTE SAISIE DE NOTES" in list_el:
+        if not any("LISTE SAISIE DE NOTES" in x for x in list_el):
             continue
 
         if verbose:
