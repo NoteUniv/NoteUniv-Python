@@ -21,8 +21,9 @@ host = os.environ.get("BDD_HOST")
 bdd_name = os.environ.get("BDD_NAME")
 login = os.environ.get("BDD_LOGIN")
 passwd = os.environ.get("BDD_PASSWD")
-webhook_url_1 = os.environ.get("WEBHOOK_URL_1")
-webhook_url_2 = os.environ.get("WEBHOOK_URL_2")
+webhook_mmi_1 = os.environ.get("WEBHOOK_MMI_1")
+webhook_mmi_2 = os.environ.get("WEBHOOK_MMI_2")
+webhook_mmi_private = os.environ.get("WEBHOOK_MMI_PRIVATE")
 
 # Load subjects + coefficients
 with open("subjects_coeff.json", "r", encoding="utf-8") as file:
@@ -175,9 +176,10 @@ def send_webhook(sem, note_code, name_teacher, name_note, type_note, type_exam, 
 
     # Send a webhook in the correct channel for every MMI
     if sem == "s1" or sem == "s2":
-        requests.post(webhook_url_1, json=webhook_data)
+        requests.post(webhook_mmi_1, json=webhook_data)
+        requests.post(webhook_mmi_private, json=webhook_data)
     elif sem == "s3" or sem == "s4":
-        requests.post(webhook_url_2, json=webhook_data)
+        requests.post(webhook_mmi_2, json=webhook_data)
 
 def send_notification(sem, note_code, name_teacher, name_note, note_date_c, average):
     promo = (int(sem[-1]) + 2 - 1) // 2
