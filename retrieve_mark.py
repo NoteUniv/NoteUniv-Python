@@ -34,23 +34,32 @@ def to_name(thing):
 
 def download_archive(sem_name, sem_token):
     # Get download token with global token
-    r = requests.get("https://seafile.unistra.fr/api/v2.1/share-link-zip-task/?share_link_token=" + sem_token + "&path=/")
+    try:
+        r = requests.get("https://seafile.unistra.fr/api/v2.1/share-link-zip-task/?share_link_token=" + sem_token + "&path=/")
+    except ConnectionError:
+        raise SystemExit(1)
     if r.ok:
         token_pdf = r.json()["zip_token"]
-    else:
-        exit()
 
     # Send a query to compress every PDF
     while True:
-        r = requests.get("https://seafile.unistra.fr/api/v2.1/query-zip-progress/?token=" + token_pdf)
+        try:
+            r = requests.get("https://seafile.unistra.fr/api/v2.1/query-zip-progress/?token=" + token_pdf)
+        except ConnectionError:
+            raise SystemExit(1)
         # Request returns a JSON with number of zipped files and total files
-        if r.json()["zipped"] != r.json()["total"]:
-            # print("Not fully zipped yet")
-            time.sleep(2)
-        else:
-            break
+        # if "zipped" in r.json() and "total" in r.json():
+        if r.ok:
+            if r.json()["zipped"] != r.json()["total"]:
+                # print("Not fully zipped yet")
+                time.sleep(2)
+            else:
+                break
 
-    r = requests.get("https://seafile.unistra.fr/seafhttp/zip/" + token_pdf)
+    try:
+        r = requests.get("https://seafile.unistra.fr/seafhttp/zip/" + token_pdf)
+    except ConnectionError:
+        raise SystemExit(1)
     # Download as stream and write bytes (works better)
     with open(sem_name + ".zip", "wb") as file:
         for chunk in r:
