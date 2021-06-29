@@ -118,14 +118,14 @@ def handle_db(sem_name, sem):
         records_global = noteuniv_cursor.fetchall()
 
         # Check if rows in global == pdf count
-        if len(records_global) == len([x for x in os.listdir(sem_name) if x.startswith("20") and x.endswith(".pdf")]):
+        if len(records_global) == len([x for x in os.listdir(sem_name) if x.startswith("20") and not "detail_notes" in x.lower() and x.endswith(".pdf")]):
             rows_complete = True
 
         # Check if all PDF are in all tables
         sql = "SELECT `TABLE_NAME` FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "')"
         noteuniv_cursor.execute(sql)
         all_tables = [x[0] for x in noteuniv_cursor.fetchall()]
-        if all([to_name(x) in [to_name(y) for y in all_tables] for x in os.listdir(sem_name) if to_name(x).startswith("20")]):
+        if all([to_name(x) in [to_name(y) for y in all_tables] for x in os.listdir(sem_name) if to_name(x).startswith("20") and not "detail_notes" in to_name(x).lower()]):
             tables_complete = True
 
 def send_webhook(sem, note_code, name_teacher, name_note, type_note, type_exam, note_date_c, average):
