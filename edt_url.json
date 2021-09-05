@@ -1,69 +1,70 @@
 {
     "GEII1": {
-        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7961,7959&projectId=1&calType=ical&nbWeeks=999",
-        "TP2": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=12095,7957&projectId=1&calType=ical&nbWeeks=999",
-        "TP3": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7963,12096&projectId=1&calType=ical&nbWeeks=999",
-        "TP4": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7966,7965&projectId=1&calType=ical&nbWeeks=999",
-        "TP5": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=12098,30943&projectId=1&calType=ical&nbWeeks=999",
-        "TP6": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=30944,12099&projectId=1&calType=ical&nbWeeks=999"
+        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7961,7959&projectId=8&calType=ical&nbWeeks=999",
+        "TP2": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=12095,7957&projectId=8&calType=ical&nbWeeks=999",
+        "TP3": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7963,12096&projectId=8&calType=ical&nbWeeks=999",
+        "TP4": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7966,7965&projectId=8&calType=ical&nbWeeks=999",
+        "TP5": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=12098,30943&projectId=8&calType=ical&nbWeeks=999",
+        "TP6": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=30944,12099&projectId=8&calType=ical&nbWeeks=999"
+    },
+    "GEII1A": {
+        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=42489,42501&projectId=8&calType=ical&nbWeeks=999"
     },
     "GEII2": {
-        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7971,7964&projectId=1&calType=ical&nbWeeks=999",
-        "TP2": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=17209,16151&projectId=1&calType=ical&nbWeeks=999",
-        "TP3": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=16154,16157&projectId=1&calType=ical&nbWeeks=999",
-        "TP4": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=16159,16168&projectId=1&calType=ical&nbWeeks=999"
+        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7971,7964&projectId=8&calType=ical&nbWeeks=999",
+        "TP2": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=17209,16151&projectId=8&calType=ical&nbWeeks=999",
+        "TP3": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=16154,16157&projectId=8&calType=ical&nbWeeks=999",
+        "TP4": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=16159,16168&projectId=8&calType=ical&nbWeeks=999"
     },
     "GEII2A": {
-        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=2545,2698&projectId=1&calType=ical&nbWeeks=999",
-        "TP2": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=6905,2542&projectId=1&calType=ical&nbWeeks=999"
+        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=2545,2698&projectId=8&calType=ical&nbWeeks=999",
+        "TP2": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=6905,2542&projectId=8&calType=ical&nbWeeks=999"
     },
     "GEII_LP_AII_4.0": {},
     "GEII_LP_CSIE_IDF_IRI": {
-        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=13858,14184&projectId=1&calType=ical&nbWeeks=999",
-        "TP2": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7902,3553&projectId=1&calType=ical&nbWeeks=999",
-        "TP3": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=8006,3551&projectId=1&calType=ical&nbWeeks=999",
-        "TP4": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=2972,3552&projectId=1&calType=ical&nbWeeks=999",
-        "TP5": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=14449,14393&projectId=1&calType=ical&nbWeeks=999",
-        "TP6": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=14385,14360&projectId=1&calType=ical&nbWeeks=999"
+        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=13858,14184&projectId=8&calType=ical&nbWeeks=999",
+        "TP2": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7902,3553&projectId=8&calType=ical&nbWeeks=999",
+        "TP3": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=8006,3551&projectId=8&calType=ical&nbWeeks=999",
+        "TP4": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=2972,3552&projectId=8&calType=ical&nbWeeks=999",
+        "TP5": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=14449,14393&projectId=8&calType=ical&nbWeeks=999",
+        "TP6": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=14385,14360&projectId=8&calType=ical&nbWeeks=999"
     },
     "MMI1": {
-        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7962,7990&projectId=1&calType=ical&nbWeeks=999",
-        "TP2": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7995,7994&projectId=1&calType=ical&nbWeeks=999",
-        "TP3": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7969,7916&projectId=1&calType=ical&nbWeeks=999",
-        "TP4": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=18872,18873&projectId=1&calType=ical&nbWeeks=999",
-        "TP5": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=38853,39383&projectId=1&calType=ical&nbWeeks=999",
-        "TP6": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=39391,39455&projectId=1&calType=ical&nbWeeks=999"
+        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7962,7990&projectId=8&calType=ical&nbWeeks=999",
+        "TP2": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7995,7994&projectId=8&calType=ical&nbWeeks=999",
+        "TP3": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7969,7916&projectId=8&calType=ical&nbWeeks=999",
+        "TP4": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=18872,18873&projectId=8&calType=ical&nbWeeks=999",
+        "TP5": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=38853,39383&projectId=8&calType=ical&nbWeeks=999",
+        "TP6": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=39391,39455&projectId=8&calType=ical&nbWeeks=999"
     },
     "MMI2": {
-        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7992,7960&projectId=1&calType=ical&nbWeeks=999",
-        "TP2": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=4035,3830&projectId=1&calType=ical&nbWeeks=999",
-        "TP3": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=3831,4077&projectId=1&calType=ical&nbWeeks=999",
-        "TP4": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=5672,5822&projectId=1&calType=ical&nbWeeks=999",
-        "TP5": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=15818,16087&projectId=1&calType=ical&nbWeeks=999",
-        "TP6": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=16095,16109&projectId=1&calType=ical&nbWeeks=999"
+        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7992,7960&projectId=8&calType=ical&nbWeeks=999",
+        "TP2": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=4035,3830&projectId=8&calType=ical&nbWeeks=999",
+        "TP3": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=3831,4077&projectId=8&calType=ical&nbWeeks=999",
+        "TP4": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=5672,5822&projectId=8&calType=ical&nbWeeks=999",
+        "TP5": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=15818,16087&projectId=8&calType=ical&nbWeeks=999",
+        "TP6": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=16095,16109&projectId=8&calType=ical&nbWeeks=999"
     },
     "MMI_DWEB": {
-        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=2546,2572&projectId=1&calType=ical&nbWeeks=999",
-        "TP2": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=3576,2820&projectId=1&calType=ical&nbWeeks=999",
-        "TP3": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=2764,2760&projectId=1&calType=ical&nbWeeks=999"
+        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=2546,2572&projectId=8&calType=ical&nbWeeks=999"
     },
     "MMI_GRAPH_RAJ": {
-        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7987,7986&projectId=1&calType=ical&nbWeeks=999",
-        "TP2": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=17999,18004&projectId=1&calType=ical&nbWeeks=999"
+        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7987,7986&projectId=8&calType=ical&nbWeeks=999",
+        "TP2": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=17999,18004&projectId=8&calType=ical&nbWeeks=999"
     },
     "QLIO1": {
-        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7896,7968&projectId=1&calType=ical&nbWeeks=999",
-        "TP2": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=290,1116&projectId=1&calType=ical&nbWeeks=999",
-        "TP3": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=622,1303&projectId=1&calType=ical&nbWeeks=999"
+        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7896,7968&projectId=8&calType=ical&nbWeeks=999",
+        "TP2": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=290,1116&projectId=8&calType=ical&nbWeeks=999",
+        "TP3": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=622,1303&projectId=8&calType=ical&nbWeeks=999"
     },
     "QLIO2": {
-        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7970,29205&projectId=1&calType=ical&nbWeeks=999"
+        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7970,29205&projectId=8&calType=ical&nbWeeks=999"
     },
     "QLIO2A": {},
     "QLIO_LPI": {
-        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7955,17513&projectId=1&calType=ical&nbWeeks=999"
+        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=7955,17513&projectId=8&calType=ical&nbWeeks=999"
     },
     "QLIO_MEQ": {
-        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=17555,17557&projectId=1&calType=ical&nbWeeks=999"
+        "TP1": "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=17555,17557&projectId=8&calType=ical&nbWeeks=999"
     }
 }

@@ -6,11 +6,12 @@ import requests, json, re
 # https://adecons.unistra.fr/direct/index.jsp
 
 global_url = "https://monemploidutemps.unistra.fr/api/resource/7863.json/"
-# Change the project id for different year (1 for 2021 starting with new API)
-base_url = "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources={},{}&projectId=1&calType=ical&nbWeeks=999"
+# Change the project id for different year
+year_id = "8"
+base_url = "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources={},{}&projectId=" + year_id + "&calType=ical&nbWeeks=999"
 
 # Token is generated on https://monemploidutemps.unistra.fr/, select Bearer
-headers = {"Authorization": input("Token Bearer: ")}
+headers = {"Authorization": "Bearer " + input("Token Bearer: ")}
 
 json_data_final = {}
 temp_class = None
