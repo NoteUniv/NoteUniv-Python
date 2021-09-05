@@ -93,7 +93,8 @@
             "ESP4": 1,
             "GRAPH4": 2,
             "MEDIA4": 1,
-            "PTPMU4": 2
+            "PTPMU4": 2,
+            "SOUTENANCE": 6
         },
         "UE2": {
             "3D": 2,
@@ -104,19 +105,113 @@
             "ANIM": 2,
             "ANIM4": 2,
             "AV4": 2,
+            "AV-SON4": 2,
             "BOOK": 2,
             "BOOK4": 2,
             "CREA4": 2,
+            "DWEB4": 2,
             "GAME": 2,
             "GAME4": 2,
             "HAB4": 2,
             "INFO4": 2,
+            "MARK4": 2,
             "PREP4": 2,
             "REA4": 2,
             "SCI4": 2,
             "SINFO": 2,
             "SINFO4": 2,
+            "SOUTENANCE": 6,
             "WEB4": 2
+        }
+    },
+    "lp_dweb": {
+        "UE1": {
+            "ERGO": 3,
+            "INTE": 3,
+            "PRESTASHOP": 3,
+            "UX": 3
+        },
+        "UE2": {
+            "ANG": 4,
+            "COM": 2,
+            "DROIT": 1,
+            "REF": 2
+        },
+        "UE3": {
+            "ACCESSIBILITE": 2,
+            "FRONT": 6,
+            "VISU3D": 4
+        },
+        "UE4": {
+            "ARCH": 3,
+            "BACK": 5,
+            "CMS": 4
+        },
+        "UE5": {
+            "PRJ": 6,
+            "PROJET": 6
+        },
+        "UE6": {
+            "RAPPORT": 9,
+            "SOUTENANCE": 9
+        }
+    },
+    "lp_graph": {
+        "UE1": {
+            "ANG": 3,
+            "COM": 3,
+            "DROIT": 1,
+            "REJ": 2
+        },
+        "UE2": {
+            "ART": 2,
+            "COMP": 2,
+            "CREA": 5,
+            "DESIGN": 2,
+            "MOTION": 4,
+            "TYPO": 3
+        },
+        "UE3": {
+            "CMS": 4,
+            "DESIGN": 6,
+            "ERGO": 4,
+            "INTEGRATION": 4,
+            "UX": 0
+        },
+        "UE4": {
+            "PRJ": 6,
+            "PROJET": 6
+        },
+        "UE5": {
+            "RAPPORT": 9,
+            "SOUTENANCE": 9
+        }
+    },
+    "lp_raj": {
+        "UE1": {
+            "ANG": 3,
+            "COM": 3,
+            "DROIT": 1,
+            "REJ": 0
+        },
+        "UE2": {
+            "INFOGRAPHIE": 3,
+            "TECHVIENT": 5,
+            "TECHVIENTT": 5,
+            "TECHVIJOUR": 10
+        },
+        "UE3": {
+            "MOTION": 5,
+            "TECHSON": 4,
+            "TECHJOUR": 9
+        },
+        "UE4": {
+            "PRJ": 6,
+            "PROJET": 6
+        },
+        "UE5": {
+            "RAPPORT": 9,
+            "SOUTENANCE": 9
         }
     }
 }
