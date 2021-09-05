@@ -9,6 +9,8 @@ from token_cipher import decipher
 dotenv.load_dotenv(".env")
 
 verbose = True # Print debug infos
+prod = True # Push notifications / ranking
+
 records_global = [] # List of all PDF name and size
 name_pdf = "" # Global for latest processed file for ranking
 list_pdf_changed = [] # Which PDF has been chaged since last update
@@ -16,7 +18,8 @@ rows_complete = False # Is global table complete
 tables_complete = False # Is database tables complete
 is_empty = False # Semester folder empty
 
-env_tokens = {key: value for key, value in os.environ.items() if "MARKS_S" in key}
+env_tokens = {key: value for key, value in os.environ.items() if "MARKS_" in key}
+spec_list = ["dweb", "graph", "raj"]
 host = os.environ.get("BDD_HOST")
 bdd_name = os.environ.get("BDD_NAME")
 login = os.environ.get("BDD_LOGIN")
@@ -30,6 +33,9 @@ with open("subjects_coeff.json", "r", encoding="utf-8") as file:
     subjects = json.load(file)
 
 def to_name(thing):
+    # Remove spec prefix if exists
+    if any([x == thing.split("_")[0].lower() for x in spec_list]):
+        thing = thing.split("_", 1)[-1]
     return thing.split("/")[-1].split(".pdf")[0].replace(" ", "_")[:64].lower()
 
 def download_archive(sem_name, sem_token):
@@ -117,15 +123,25 @@ def handle_db(sem_name, sem):
         noteuniv_cursor.execute(sql)
         records_global = noteuniv_cursor.fetchall()
 
-        # Check if rows in global == pdf count
-        if len(records_global) == len([x for x in os.listdir(sem_name) if x.startswith("20") and not "detail_notes" in x.lower() and x.endswith(".pdf")]):
+        sem_key = sem.split("_")[-1] if sem == "lp" else ""
+
+        saved_pdfs = [x[0] for x in records_global]
+        downloaded_pdfs = [to_name(x)
+                           for x in os.listdir(sem_name)
+                           if to_name(x).startswith("20") and
+                           not "detail_note" in x.lower() and
+                           x.endswith(".pdf") and
+                           sem_key in x.lower()]
+
+        # Check all downloaded PDF in DB saved PDF
+        if all([x in saved_pdfs for x in downloaded_pdfs]):
             rows_complete = True
 
         # Check if all PDF are in all tables
         sql = "SELECT `TABLE_NAME` FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "')"
         noteuniv_cursor.execute(sql)
         all_tables = [x[0] for x in noteuniv_cursor.fetchall()]
-        if all([to_name(x) in [to_name(y) for y in all_tables] for x in os.listdir(sem_name) if to_name(x).startswith("20") and not "detail_notes" in to_name(x).lower()]):
+        if all([to_name(x) in [to_name(y) for y in all_tables] for x in os.listdir(sem_name) if to_name(x).startswith("20") and not "detail_note" in to_name(x).lower()]):
             tables_complete = True
 
 def send_webhook(sem, note_code, name_teacher, name_note, type_note, type_exam, note_date_c, average):
@@ -186,9 +202,9 @@ def send_webhook(sem, note_code, name_teacher, name_note, type_note, type_exam, 
     # Send a webhook in the correct channel for every MMI
     if sem == "s1" or sem == "s2":
         requests.post(webhook_mmi_1, json=webhook_data)
-        requests.post(webhook_mmi_private, json=webhook_data)
     elif sem == "s3" or sem == "s4":
         requests.post(webhook_mmi_2, json=webhook_data)
+        requests.post(webhook_mmi_private, json=webhook_data)
 
 def send_notification(sem, note_code, name_teacher, name_note, note_date_c, average):
     promo = (int(sem[-1]) + 2 - 1) // 2
@@ -212,8 +228,11 @@ def send_notification(sem, note_code, name_teacher, name_note, note_date_c, aver
 
 def process_pdf(sem_name, sem, sem_token):
     global name_pdf, list_pdf_changed
+
+    sem_key = sem.split("_")[-1] if sem == "lp" else ""
+
     # Loop PDF files
-    for filename in [x for x in os.listdir(sem_name) if x.startswith("20") and x.endswith(".pdf")]: # Exclude other formats
+    for filename in [x for x in os.listdir(sem_name) if to_name(x).startswith("20") and x.endswith(".pdf") and sem_key in x.lower()]: # Exclude other formats
         # Get all data from PDF (list)
         list_el = convert_pdf_to_list(sem_name + "/" + filename)
 
@@ -239,13 +258,23 @@ def process_pdf(sem_name, sem, sem_token):
         link_pdf = "https://seafile.unistra.fr/d/" + sem_token + "/files/?p=/" + filename
         name_pdf = to_name(link_pdf)
         size_pdf = os.stat(sem_name + "/" + filename).st_size
-        y, m, d, _ = filename.split("_", 3)
+        if "lp" in sem:
+            _, y, m, d, _ = filename.split("_", 4)
+        else:
+            y, m, d, _ = filename.split("_", 3)
         if len(y) != 4:
             y = time.strftime("%Y")
+
+        # Fix human mistakes
+        if int(m) > 12:
+            m = 1
+        if int(d) > 31:
+            d = 1
+
         note_date_c = f"{y}-{m}-{d}"
         note_date_m = time.strftime("%y-%m-%d %H:%M:%S", time.gmtime(os.stat(sem_name + "/" + filename).st_atime))
 
-        # Loop keys to know code and coeff
+        # Loop keys to know subject code and coeff
         for main_key in subjects[sem].keys():
             for x in subjects[sem][main_key].keys():
                 for y in name_pdf.split("_"):
@@ -255,19 +284,21 @@ def process_pdf(sem_name, sem, sem_token):
                         note_semester = main_key
                         break
 
-        # Check format of PDF, blank is useless if space in doc
+        # Skip blank spaces in PDF
         list_el = [x for x in list_el if x != ""]
 
         msg_etu_index = [x for x in list_el if "etudiant" in x.lower()][-1]
         etu_start_index = list_el.index(msg_etu_index)
-        msg_note_index = [x for x in list_el if "Note" in x][-1]
-        note_start_index = list_el.index(msg_note_index)
+        note_start_index = list_el.index("Note")
 
         # Get lists of all num etu and all marks
-        nb_etu = int(list_el[etu_start_index - 1])
+        # 200 is the max possible number of students (to exclude students numbers)
+        nb_etu = max([int(x) for x in list_el if x.isdigit() and int(x) < 200])
+
         num_etu = list_el[etu_start_index + 1:etu_start_index + nb_etu + 1]
         note_etu = list_el[note_start_index + 1:note_start_index + nb_etu + 1]
-        # If PDF spaces are broken
+
+        # Fill with ABS in case
         if nb_etu != len(note_etu):
             note_etu = ["100,000"] * nb_etu
 
@@ -306,10 +337,11 @@ def process_pdf(sem_name, sem, sem_token):
             global_data = (type_note, type_exam, name_note, name_teacher, name_pdf, link_pdf, size_pdf, note_code, note_coeff, note_semester, note_date_c, note_date_m, note_total, average, median, minimum, maximum, variance, deviation)
             noteuniv_cursor.execute(sql, global_data)
 
-            # Send a discord webhook for every mark
-            send_webhook(sem, note_code, name_teacher, name_note, type_note, type_exam, note_date_c, average)
-            # Send a notification on user's device
-            send_notification(sem, note_code, name_teacher, name_note, note_date_c, average)
+            if prod:
+                # Send a discord webhook for every mark
+                send_webhook(sem, note_code, name_teacher, name_note, type_note, type_exam, note_date_c, average)
+                # Send a notification on user's device
+                send_notification(sem, note_code, name_teacher, name_note, note_date_c, average)
 
         # Test if table exists
         sql = "SELECT count(*) FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "') AND (TABLE_NAME = '" + name_pdf + "')"
@@ -326,6 +358,24 @@ def process_pdf(sem_name, sem, sem_token):
         else:
             if verbose:
                 print("'" + name_note + "' already exists.")
+
+def fill_db(sem_name, sem, sem_token):
+    handle_db(sem_name, sem)
+    # Continue if nothing to update (avoid useless requests)
+    if rows_complete and tables_complete and not list_pdf_changed:
+        if verbose:
+            print(f"Nothing more to add in {sem}, tables and global will not be updated.")
+    else:
+        process_pdf(sem_name, sem, sem_token)
+        # Commit changes (push)
+        db_noteuniv.commit()
+        print(f"Everything has been successfully updated in {sem}!")
+        # Send request to update ranking
+        url_ranking = os.environ.get("URL_RANKING")
+        if url_ranking and prod:
+            params = {"action": "updateRanking",
+                      "semestre": sem}
+            requests.post(url_ranking, data=params)
 
 if __name__ == "__main__":
     # Create main database if not exists
@@ -347,22 +397,12 @@ if __name__ == "__main__":
         # Login to this database directly (every semester for connection lost)
         db_noteuniv = mysql.connector.connect(user=login, password=passwd, host=host, database=bdd_name)
         noteuniv_cursor = db_noteuniv.cursor()
-        handle_db(sem_name, sem)
-        # Continue if nothing to update (avoid useless requests)
-        if rows_complete and tables_complete and not list_pdf_changed:
-            if verbose:
-                print("Nothing more to add, tables and global will not be updated.")
+        if sem == "lp":
+            for spec in spec_list:
+                fill_db(sem_name, sem + "_" + spec, sem_token)
         else:
-            process_pdf(sem_name, sem, sem_token)
-            # Commit changes (push)
-            db_noteuniv.commit()
-            print("Everything has been successfully updated!")
-            # Send request to update ranking
-            url_ranking = os.environ.get("URL_RANKING")
-            if url_ranking:
-                params = {"action": "updateRanking",
-                          "semestre": sem[-1]}
-                requests.post(url_ranking, data=params)
+            fill_db(sem_name, sem, sem_token)
+
         # Delete old folders to remove fail marks
         shutil.rmtree(sem_name, ignore_errors=True)
         noteuniv_cursor.close()
