@@ -8,9 +8,9 @@ import requests, json, re
 global_url = "https://monemploidutemps.unistra.fr/api/resource/7863.json/"
 # Change the project id for different year
 year_id = "8"
-base_url = "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources={},{}&projectId=" + year_id + "&calType=ical&nbWeeks=999"
+base_url = "https://adecons.unistra.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources={}&projectId=" + year_id + "&calType=ical&nbWeeks=999"
 
-# Token is generated on https://monemploidutemps.unistra.fr/, select Bearer
+# Token is generated on https://monemploidutemps.unistra.fr, select Bearer
 headers = {"Authorization": "Bearer " + input("Token Bearer: ")}
 
 json_data_final = {}
@@ -26,12 +26,15 @@ for x in data_global["children"]:
         json_data_final[name_section] = {}
         data_section = requests.get(url_section, headers=headers).json()
         for y in data_section["children"]:
-            if not temp_class:
+            if not temp_class and not "_" in name_section and not int(data_section["number"]) % 2 != 0:
                 temp_class = int(re.findall(r"\d+", y["id"])[0])
             else:
                 id_class = int(re.findall(r"\d+", y["id"])[0])
                 i += 1
-                json_data_final[name_section].update({"TP" + str(i): base_url.format(temp_class, id_class)})
+                if temp_class:
+                    json_data_final[name_section].update({"TP" + str(i): base_url.format(str(temp_class) + "," + str(id_class))})
+                else:
+                    json_data_final[name_section].update({"TP" + str(i): base_url.format(str(id_class))})
                 temp_class = None
         temp_class = None
 
