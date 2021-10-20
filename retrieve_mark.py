@@ -229,7 +229,7 @@ def send_notification(sem, note_code, name_teacher, name_note, note_date_c, aver
 def process_pdf(sem_name, sem, sem_token):
     global name_pdf, list_pdf_changed
 
-    sem_key = sem.split("_")[-1] if sem == "lp" else ""
+    sem_key = sem.split("_")[-1] if "lp" in sem else ""
 
     # Loop PDF files
     for filename in [x for x in os.listdir(sem_name) if to_name(x).startswith("20") and x.endswith(".pdf") and sem_key in x.lower()]: # Exclude other formats
