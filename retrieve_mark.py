@@ -275,6 +275,9 @@ def process_pdf(sem_name, sem, sem_token):
         note_date_m = time.strftime("%y-%m-%d %H:%M:%S", time.gmtime(os.stat(sem_name + "/" + filename).st_atime))
 
         # Loop keys to know subject code and coeff
+        note_code = ""
+        note_coeff = 0
+        note_semester = "UE0"
         for main_key in subjects[sem].keys():
             for x in subjects[sem][main_key].keys():
                 for y in name_pdf.split("_"):
