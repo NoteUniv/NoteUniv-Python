@@ -24,17 +24,14 @@ host = os.environ.get("BDD_HOST")
 bdd_name = os.environ.get("BDD_NAME")
 login = os.environ.get("BDD_LOGIN")
 passwd = os.environ.get("BDD_PASSWD")
-webhook_mmi_1 = os.environ.get("WEBHOOK_MMI_1")
-webhook_mmi_2 = os.environ.get("WEBHOOK_MMI_2")
-webhook_mmi_private = os.environ.get("WEBHOOK_MMI_PRIVATE")
 
 # Load subjects + coefficients
 with open("subjects_coeff.json", "r", encoding="utf-8") as file:
     subjects = json.load(file)
 
-def to_name(thing):
+def to_name(thing, delprefix=False):
     # Remove spec prefix if exists
-    if any([x == thing.split("_")[0].lower() for x in spec_list]):
+    if any([x == thing.split("_")[0].lower() for x in spec_list]) and delprefix:
         thing = thing.split("_", 1)[-1]
     return thing.split("/")[-1].split(".pdf")[0].replace(" ", "_")[:64].lower()
 
@@ -57,7 +54,7 @@ def download_archive(sem_name, sem_token):
         # if "zipped" in r.json() and "total" in r.json():
         if r.ok:
             if r.json()["zipped"] != r.json()["total"]:
-                # print("Not fully zipped yet")
+                # Not fully zipped yet
                 time.sleep(2)
             else:
                 break
@@ -123,25 +120,35 @@ def handle_db(sem_name, sem):
         noteuniv_cursor.execute(sql)
         records_global = noteuniv_cursor.fetchall()
 
-        sem_key = sem.split("_")[-1] if sem == "lp" else ""
+        sem_key = sem.split("_")[-1] if "lp_" in sem else ""
 
-        saved_pdfs = [x[0] for x in records_global]
+        all_rows = [x[0] for x in records_global]
         downloaded_pdfs = [to_name(x)
                            for x in os.listdir(sem_name)
-                           if to_name(x).startswith("20") and
+                           if to_name(x, True).startswith("20") and
                            not "detail_note" in x.lower() and
                            x.endswith(".pdf") and
                            sem_key in x.lower()]
 
-        # Check all downloaded PDF in DB saved PDF
-        if all([x in saved_pdfs for x in downloaded_pdfs]):
+        # Check all downloaded PDF are in DB global row
+        if all([x in all_rows for x in downloaded_pdfs]):
             rows_complete = True
 
         # Check if all PDF are in all tables
         sql = "SELECT `TABLE_NAME` FROM information_schema.TABLES WHERE (TABLE_SCHEMA = '" + bdd_name + "')"
         noteuniv_cursor.execute(sql)
-        all_tables = [x[0] for x in noteuniv_cursor.fetchall()]
-        if all([to_name(x) in [to_name(y) for y in all_tables] for x in os.listdir(sem_name) if to_name(x).startswith("20") and not "detail_note" in to_name(x).lower()]):
+        records_tables = noteuniv_cursor.fetchall()
+
+        all_tables = [x[0] for x in records_tables]
+        downloaded_pdfs = [to_name(x)
+                           for x in os.listdir(sem_name)
+                           if to_name(x, True).startswith("20") and
+                           not "detail_note" in x.lower() and
+                           x.endswith(".pdf") and
+                           sem_key in x.lower()]
+
+        # Check all downloaded PDF are in DB tables
+        if all([x in all_tables for x in downloaded_pdfs]):
             tables_complete = True
 
 def send_webhook(sem, note_code, name_teacher, name_note, type_note, type_exam, note_date_c, average):
@@ -199,16 +206,22 @@ def send_webhook(sem, note_code, name_teacher, name_note, type_note, type_exam, 
         ]
     }
 
-    # Send a webhook in the correct channel for every MMI
+    # Send a webhook in a specific channel
     if sem == "s1" or sem == "s2":
-        requests.post(webhook_mmi_1, json=webhook_data)
+        requests.post(os.environ.get("WEBHOOK_MMI1"), json=webhook_data)
     elif sem == "s3" or sem == "s4":
-        requests.post(webhook_mmi_2, json=webhook_data)
-        requests.post(webhook_mmi_private, json=webhook_data)
+        requests.post(os.environ.get("WEBHOOK_MMI2"), json=webhook_data)
+    else:
+        requests.post(os.environ.get("WEBHOOK_" + sem.upper()), json=webhook_data)
 
 def send_notification(sem, note_code, name_teacher, name_note, note_date_c, average):
-    promo = (int(sem[-1]) + 2 - 1) // 2
-    noteuniv_cursor.execute("SELECT token, key_token FROM data_etu WHERE promo = 'MMI" + str(promo) + "'")
+    if sem == "s1" or sem == "s2":
+        promo = "MMI1"
+    elif sem == "s3" or sem == "s4":
+        promo = "MMI2"
+    else:
+        promo = sem.upper()
+    noteuniv_cursor.execute("SELECT token, key_token FROM data_etu WHERE promo = '" + promo + "'")
 
     all_tokens = []
 
@@ -232,7 +245,12 @@ def process_pdf(sem_name, sem, sem_token):
     sem_key = sem.split("_")[-1] if "lp" in sem else ""
 
     # Loop PDF files
-    for filename in [x for x in os.listdir(sem_name) if to_name(x).startswith("20") and x.endswith(".pdf") and sem_key in x.lower()]: # Exclude other formats
+    downloaded_pdfs = [x
+                       for x in os.listdir(sem_name)
+                       if to_name(x, True).startswith("20") and
+                       x.endswith(".pdf") and
+                       sem_key in x.lower()]
+    for filename in downloaded_pdfs: # Exclude other formats
         # Get all data from PDF (list)
         list_el = convert_pdf_to_list(sem_name + "/" + filename)
 
