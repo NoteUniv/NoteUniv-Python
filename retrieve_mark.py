@@ -264,7 +264,7 @@ def process_pdf(sem_name, sem, sem_token):
         msg_type_note = [x for x in list_el if "type de note" in x.lower()][0]
         type_note = list_el[list_el.index(msg_type_note) + 1]
         msg_type_exam = [x for x in list_el if "type d'épreuve" in x.lower()][0]
-        type_exam = list_el[list_el.index(msg_type_exam) + 2]
+        type_exam = list_el[list_el.index(msg_type_exam) + 1]
         msg_nom_note = [x for x in list_el if "nom du devoir" in x.lower()][0]
         name_note = list_el[list_el.index(msg_nom_note) + 1]
         if not name_note:
