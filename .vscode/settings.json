@@ -4,6 +4,7 @@
         "dweb",
         "etudiant",
         "laparams",
-        "pdfinterp"
+        "pdfinterp",
+        "stdev"
     ]
 }
