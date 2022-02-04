@@ -1,5 +1,5 @@
 requests
+python-dotenv
 pdfminer
-python.dotenv
 statistics
-mysql.connector
+mysql-connector
