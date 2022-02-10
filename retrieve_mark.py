@@ -394,9 +394,14 @@ def fill_db(sem_name, sem, sem_token):
         # Send request to update ranking
         url_ranking = os.environ.get("URL_RANKING")
         if url_ranking and prod:
-            params = {"action": "updateRanking",
-                      "semestre": sem}
-            requests.post(url_ranking, data=params)
+            headers = {
+                "User-Agent": "NoteUniv Bot"
+            }
+            params = {
+                "action": "updateRanking",
+                "semestre": sem
+            }
+            requests.post(url_ranking, data=params, headers=headers)
 
 if __name__ == "__main__":
     # Create main database if not exists
