@@ -193,6 +193,7 @@
             "HAB4": 2,
             "INFO4": 2,
             "MARK4": 2,
+            "MOD3D": 2,
             "PREP4": 2,
             "REA4": 2,
             "SCI4": 2,
@@ -206,6 +207,7 @@
         "UE1": {
             "ERGO": 3,
             "INTE": 3,
+            "PDP": 3,
             "PRESTASHOP": 3,
             "UX": 3
         },
@@ -229,7 +231,8 @@
         },
         "UE5": {
             "PRJ": 6,
-            "PROJET": 6
+            "PROJET": 6,
+            "PROJETS": 6
         },
         "UE6": {
             "RAPPORT": 9,
@@ -245,9 +248,12 @@
         },
         "UE2": {
             "ART": 2,
+            "ARTVI": 2,
             "COMP": 2,
             "CREA": 5,
             "DESIGN": 2,
+            "INF": 2,
+            "GRAPH": 3,
             "MOTION": 4,
             "TYPO": 3
         },
@@ -260,7 +266,8 @@
         },
         "UE4": {
             "PRJ": 6,
-            "PROJET": 6
+            "PROJET": 6,
+            "PROJETS": 6
         },
         "UE5": {
             "RAPPORT": 9,
@@ -275,6 +282,7 @@
             "REJ": 0
         },
         "UE2": {
+            "GRAPH": 3,
             "INFOGRAPHIE": 3,
             "TECHVIENT": 5,
             "TECHVIENTT": 5,
@@ -287,7 +295,8 @@
         },
         "UE4": {
             "PRJ": 6,
-            "PROJET": 6
+            "PROJET": 6,
+            "PROJETS": 6
         },
         "UE5": {
             "RAPPORT": 9,
