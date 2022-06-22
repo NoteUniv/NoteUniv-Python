@@ -221,6 +221,7 @@
         },
         "UE3": {
             "ACCESSIBILITE": 2,
+            "ACCESS": 2,
             "FRONT": 6,
             "VISU3D": 4
         },
