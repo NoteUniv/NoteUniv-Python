@@ -188,6 +188,7 @@
             "BOOK4": 2,
             "CREA4": 2,
             "DWEB4": 2,
+            "ECOM4": 2,
             "GAME": 2,
             "GAME4": 2,
             "HAB4": 2,
@@ -200,6 +201,7 @@
             "SINFO": 2,
             "SINFO4": 2,
             "SOUTENANCE": 6,
+            "SON4": 2,
             "WEB4": 2
         }
     },
