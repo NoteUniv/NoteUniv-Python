@@ -44,7 +44,7 @@ Please make sure to test your suggestions before committing.
 -   Website Erosya: [erosya.fr](https://erosya.fr)
 -   Github Quentium: [QuentiumYT](https://github.com/QuentiumYT)
 -   Github Ynohtna: [YnohtnaFr](https://github.com/YnohtnaFr)
--   Twitter Quentium: [@QuentiumYT](https://twitter.com/QuentiumYT)
+-   Twitter Quentium: [@Quentium67](https://twitter.com/Quentium67)
 -   Twitter Erosya: [@YnohtnaErosya](https://twitter.com/YnohtnaErosya)
 
 Please ✰ this repository if this project helped you!
@@ -55,4 +55,4 @@ Please ✰ this repository if this project helped you!
 
 ---
 
-_Made with_ ❤ _by QuentiumYT & Ynohtna_
+_Made with_ ❤ _by Quentium & Ynohtna_
